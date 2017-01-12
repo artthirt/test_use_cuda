@@ -55,12 +55,12 @@ cudaError_t cuda_main()
 	return cudaGetLastError();
 }
 
-__global__ void matmul(double* DA, double *DB, double *DC, int ARows, int BRows, int BCols)
+__global__ void matmul(float* DA, float *DB, float *DC, int ARows, int BRows, int BCols)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
-	double sC = 0;
+	float sC = 0;
 
 	if(row < ARows && col < BCols){
 		for(int i = 0; i < BRows; i++){
@@ -71,7 +71,7 @@ __global__ void matmul(double* DA, double *DB, double *DC, int ARows, int BRows,
 }
 
 extern "C"
-cudaError_t cuda_mult(mats::Mat *a, mats::Mat *b, mats::Mat *c)
+cudaError_t cuda_mult(mats::Mat<float> *a, mats::Mat<float> *b, mats::Mat<float> *c)
 {
 #define BLOCKSIZE	16
 
@@ -88,7 +88,7 @@ cudaError_t cuda_mult(mats::Mat *a, mats::Mat *b, mats::Mat *c)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	double *dA, *dB, *dC;
+	float *dA, *dB, *dC;
 
 	cudaMalloc((void **)&dA, a->size());
 	cudaMalloc((void **)&dB, b->size());
@@ -99,6 +99,8 @@ cudaError_t cuda_mult(mats::Mat *a, mats::Mat *b, mats::Mat *c)
 	cudaMemcpy(dC, c->data, c->size(), cudaMemcpyHostToDevice);
 
 	matmul<<<dimGrid, dimBlock>>>(dA, dB, dC, a->rows, a->cols, b->cols);
+
+//	std::cout << "time_pass=" << mats::getTick() - tick << std::endl;
 
 	cudaMemcpy(c->data, dC, c->size(), cudaMemcpyDeviceToHost);
 

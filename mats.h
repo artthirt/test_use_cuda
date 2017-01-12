@@ -2,9 +2,27 @@
 #define MATS_H
 
 #include <memory>
+#include <chrono>
 
 namespace mats{
 
+//////////////////////////////
+
+/**
+ * @brief getTick
+ * @return
+ */
+inline int64_t getTick()
+{
+	using namespace std::chrono;
+	milliseconds res = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+	return res.count();
+}
+
+//////////////////////////////
+
+
+template< class T >
 struct Mat{
 	Mat(){
 		rows = 0;
@@ -14,20 +32,20 @@ struct Mat{
 	Mat(int rows, int cols){
 		this->rows = rows;
 		this->cols = cols;
-		this->data = new double[rows * cols];
+		this->data = new T[rows * cols];
 	}
-	Mat(int rows, int cols, double* data){
+	Mat(int rows, int cols, T* data){
 		this->rows = rows;
 		this->cols = cols;
-		this->data = new double[rows * cols];
-		memcpy(this->data, data, rows * cols * sizeof(double));
+		this->data = new T[rows * cols];
+		memcpy(this->data, data, rows * cols * sizeof(T));
 	}
 	Mat(const Mat& m){
 		rows = m.rows;
 		cols = m.cols;
 
-		this->data = new double[rows * cols];
-		memcpy(this->data, m.data, rows * cols * sizeof(double));
+		this->data = new T[rows * cols];
+		memcpy(this->data, m.data, rows * cols * sizeof(T));
 	}
 
 	~Mat(){
@@ -44,40 +62,41 @@ struct Mat{
 		rows = m.rows;
 		cols = m.cols;
 
-		this->data = new double[rows * cols];
-		memcpy(this->data, m.data, rows * cols * sizeof(double));
+		this->data = new T[rows * cols];
+		memcpy(this->data, m.data, rows * cols * sizeof(T));
 
 		return *this;
 	}
 
 	size_t size() const{
-		return rows * cols * sizeof(double);
+		return rows * cols * sizeof(T);
 	}
 
-	inline double& at(int i0, int i1){
+	inline T& at(int i0, int i1){
 		return data[i0 * cols + i1];
 	}
-	inline double& at(int i0, int i1) const{
+	inline T& at(int i0, int i1) const{
 		return data[i0 * cols + i1];
 	}
 
-	inline double& operator[] (int index){
+	inline T& operator[] (int index){
 		return data[index];
 	}
-	inline double& operator[] (int index) const{
+	inline T& operator[] (int index) const{
 		return data[index];
 	}
 
-	double *data;
+	T *data;
 	int rows;
 	int cols;
 };
 
-inline Mat matMult(const Mat& A, const Mat& B)
+template< class T >
+inline Mat<T> matMult(const Mat<T>& A, const Mat<T>& B)
 {
 	if(A.cols != B.rows)
-		return Mat();
-	Mat res(A.rows, B.cols);
+		return Mat<T>();
+	Mat<T> res(A.rows, B.cols);
 
 #pragma omp parallel for
 	for(int i = 0; i < A.rows; ++i){

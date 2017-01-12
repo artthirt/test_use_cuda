@@ -14,20 +14,10 @@ extern "C"
 cudaError_t cuda_main();
 
 extern "C"
-cudaError_t cuda_mult(mats::Mat* a, mats::Mat* b, mats::Mat *c);
+cudaError_t cuda_mult(mats::Mat<float>* a, mats::Mat<float>* b, mats::Mat<float> *c);
 
-//////////////////////////////
-
-int64_t getTick()
-{
-	using namespace std::chrono;
-	milliseconds res = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
-	return res.count();
-}
-
-//////////////////////////////
-
-void print_mat(const mats::Mat& mc)
+template<class T>
+void print_mat(const mats::Mat<T>& mc)
 {
 	cout << "[ ";
 	for(int i = 0; i < mc.rows; i++){
@@ -39,7 +29,8 @@ void print_mat(const mats::Mat& mc)
 	cout << "]\n";
 }
 
-void print_mat(const mats::Mat& mc, const std::string& caption, const std::string& fn)
+template<class T>
+void print_mat(const mats::Mat<T>& mc, const std::string& caption, const std::string& fn)
 {
 	fstream fs;
 	fs.open(fn, ios_base::in | ios_base::app);
@@ -79,42 +70,27 @@ int main(int argc, char *argv[])
 	};
 
 //	Mat ma(5, 4, a), mb(4, 6, b), mc(5, 6);
-	Mat ma(32, 1000), mb(1000, 11), mc(32, 11);
+	Mat<float> ma(32, 1000), mb(1000, 11), mc(32, 11);
 
 	for(int i = 0; i < ma.rows; i++){
 		for(int j = 0; j < ma.cols; j++){
-			ma.at(i, j) = (double)i / ma.rows + (double)j / ma.cols;
+			ma.at(i, j) = (float)i / ma.rows + (float)j / ma.cols;
 		}
 	}
 
 	for(int i = 0; i < mb.rows; i++){
 		for(int j = 0; j < mb.cols; j++){
-			mb.at(i, j) = (double)(mb.rows - i) / mb.rows + (double)(mb.cols / 2. - j) / mb.cols;
+			mb.at(i, j) = (float)(mb.rows - i) / mb.rows + (float)(mb.cols / 2. - j) / mb.cols;
 		}
 	}
 
-	const int test_count = 10000;
-
 	cudaError_t err = cudaSuccess;
 
-	int64_t  tick = getTick();
-	for(int i = 0; i < test_count && err == cudaSuccess; ++i){
-		err = cuda_mult(&ma, &mb, &mc);
-	}
-	cout << "time=" << getTick() - tick << endl;
+	err = cuda_mult(&ma, &mb, &mc);
 
 	print_mat(ma, "A", "mat.txt");
 	print_mat(mb, "B", "mat.txt");
 	print_mat(mc, "C", "mat.txt");
-
-	tick = getTick();
-	for(int i = 0; i < test_count; ++i){
-		mc = matMult(ma, mb);
-	}
-	print_mat(mc, "C", "mat1.txt");
-
-	cout << "time=" << getTick() - tick << endl;
-
 
 	cout << err << " " << "Hello World!" << endl;
 	return 0;
