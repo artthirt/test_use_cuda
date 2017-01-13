@@ -28,6 +28,7 @@ win32{
 }else{
     CUDA_DIR					= /usr/
     SYSTEM_NAME					= unix         # Depending on your system either 'Win32', 'x64', or 'Win64'
+    CUDA_OBJECTS_DIR			= ./
 }
 
 SYSTEM_TYPE = 64            # '32' or '64', depending on your system
@@ -56,6 +57,8 @@ CONFIG(debug, debug|release) {
         cuda_d.commands += --compile -cudart static -g -DWIN32 -D_MBCS \
                     -Xcompiler "/wd4819,/EHsc,/W3,/nologo,/Od,/Zi,/RTC1" \
                     -Xcompiler $$MSVCRT_LINK_FLAG_DEBUG
+    }else{
+#        cuda_d.commands += -Xcompiler "-std=c++0x"
     }
 
     cuda_d.dependency_type = TYPE_C
@@ -73,13 +76,18 @@ else {
         cuda.commands +=  --compile -cudart static -DWIN32 -D_MBCS \
                     -Xcompiler "/wd4819,/EHsc,/W3,/nologo,/O2,/Zi" \
                     -Xcompiler $$MSVCRT_LINK_FLAG_RELEASE
+    }else{
     }
 
     cuda.dependency_type = TYPE_C
     QMAKE_EXTRA_COMPILERS += cuda
 }
 
-QMAKE_CXXFLAGS += /openmp
+win32{
+    QMAKE_CXXFLAGS += /openmp
+}else{
+    QMAKE_CXXFLAGS += -fopenmp
+}
 
 HEADERS += \
     mats.h

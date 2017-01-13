@@ -2,12 +2,16 @@
 #define MATS_H
 
 #include <memory>
+
+#ifdef _MSCVER
 #include <chrono>
+#endif
 
 namespace mats{
 
 //////////////////////////////
 
+#ifdef _MSCVER
 /**
  * @brief getTick
  * @return
@@ -18,6 +22,21 @@ inline int64_t getTick()
 	milliseconds res = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
 	return res.count();
 }
+
+#else
+
+#include <time.h>
+#include <sys/time.h>
+
+inline int64_t getTick()
+{
+	timeval tv;
+	gettimeofday(&tv, 0);
+	int64_t ms = tv.tv_sec * 1000000 + tv.tv_usec / 1000;
+	return ms;
+}
+
+#endif
 
 //////////////////////////////
 
