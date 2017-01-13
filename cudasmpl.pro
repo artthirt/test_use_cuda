@@ -3,7 +3,10 @@ CONFIG += console c++11
 CONFIG -= app_bundle
 CONFIG -= qt
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    gpumat.cpp \
+    shared_memory.cpp \
+    custom_types.cpp
 
 #CUDA_DIR = "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/"
 #SYSTEM_TYPE = x64
@@ -90,4 +93,7 @@ win32{
 }
 
 HEADERS += \
-    mats.h
+    mats.h \
+    gpumat.h \
+    shared_memory.h \
+    custom_types.h

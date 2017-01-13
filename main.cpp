@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	};
 
 //	Mat ma(5, 4, a), mb(4, 6, b), mc(5, 6);
-	Mat<float> ma(32, 1000), mb(1000, 11), mc(32, 11);
+	Mat<float> ma(32, 45), mb(45, 11), mc(32, 11);
 
 	for(int i = 0; i < ma.rows; i++){
 		for(int j = 0; j < ma.cols; j++){
