@@ -68,71 +68,78 @@ private:
  * @brief add
  * @param A
  * @param B
- * @param C
+ * @param C - out C = A .+ B
  */
 void add(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief sub
  * @param A
  * @param B
- * @param C
+ * @param C - out C = A .- B
  */
 void sub(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief matmul
  * @param A
  * @param B
- * @param C
+ * @param C - out C = A * B
  */
 void matmul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief matmulT1
  * @param At - used as transposed matrix
  * @param B
- * @param C
+ * @param C - out C = A' * B
  */
 void matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C);
 /**
  * @brief matmulT2
  * @param A
  * @param Bt - used as transposed matrix
- * @param C
+ * @param C - out C = A * B'
  */
 void matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
 /**
  * @brief mulval
  * @param A
  * @param value - mat 1x1
- * @param C
+ * @param C - out C = A * value
  */
 void mulval(const GpuMat& A, const GpuVal& value, GpuMat& C);
 /**
  * @brief addval
  * @param A
  * @param value - mat 1x1
- * @param C
+ * @param C - out C = A + value
  */
 void addval(const GpuMat& A, const GpuVal& value, GpuMat& C);
 /**
  * @brief subval
  * @param A
  * @param value - mat 1x1
- * @param C
+ * @param C - out C = A - value
  */
 void subval(const GpuMat& A, const GpuVal& value, GpuMat& C);
 /**
  * @brief subval
  * @param A
  * @param value - mat 1x1
- * @param C
+ * @param C - out C = value - C
  */
 void subval(const GpuVal& value, const GpuMat& A, GpuMat& C);
 /**
  * @brief biasPlus
- * @param A
+ * @param A - out A[i] = A[i] + bias
  * @param bias
  */
 void biasPlus(GpuMat& A, const GpuMat& bias);
+/**
+ * @brief elemiseMul
+ * @param A
+ * @param B
+ * @param C - out C = A .* B
+ */
+void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 }
 

@@ -331,3 +331,13 @@ void biasPlus(GpuMat &A, const GpuMat &bias)
 
 
 }
+
+void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+}
