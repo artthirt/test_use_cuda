@@ -15,9 +15,11 @@ SOURCES += main.cpp \
 INCLUDEPATH += $$CUDA_DIR/include
 
 DISTFILES += \
-    cuda_code.cu
+    cuda_code.cu \
+    cuda_arithm.cu
 
-CUDA_SOURCES += cuda_code.cu
+CUDA_SOURCES += cuda_code.cu \
+                cuda_arithm.cu
 
 win32{
     CUDA_DIR					= "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/"

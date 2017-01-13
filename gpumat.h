@@ -4,9 +4,7 @@
 #include <iostream>
 #include <vector>
 
-#include <custom_types.h>
-
-namespace gpu{
+namespace gpumat{
 
 enum{
 	GPU_FLOAT,
@@ -24,8 +22,6 @@ public:
 	GpuMat();
 	GpuMat(int rows, int cols, int type);
 	GpuMat(const GpuMat& mat);
-	GpuMat(const ct::Mat_< float > & mat);
-	GpuMat(const ct::Mat_< double > & mat);
 	~GpuMat();
 
 	GpuMat &operator =(const GpuMat& mat);

@@ -2,7 +2,7 @@
 
 #include <cuda_runtime.h>
 
-using namespace gpu;
+using namespace gpumat;
 
 GpuMat::GpuMat()
 {
@@ -102,26 +102,6 @@ void GpuMat::release()
 		cudaFree(data);
 		data = 0;
 	}
-}
-
-GpuMat::GpuMat(const ct::Mat_< float > &mat)
-{
-	rows = this->rows;
-	cols = this->cols;
-	type = GPU_FLOAT;
-
-	cudaError_t err = cudaMalloc(&data, size());
-	err = cudaMemcpy(data, mat.ptr(), size(), cudaMemcpyHostToDevice);
-}
-
-GpuMat::GpuMat(const ct::Mat_< double > &mat)
-{
-	rows = this->rows;
-	cols = this->cols;
-	type = GPU_DOUBLE;
-
-	cudaError_t err = cudaMalloc(&data, size());
-	err = cudaMemcpy(data, mat.ptr(), size(), cudaMemcpyHostToDevice);
 }
 
 /////////////////////////////////////////////////
