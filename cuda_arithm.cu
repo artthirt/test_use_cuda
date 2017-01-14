@@ -14,6 +14,7 @@ namespace internal{
  * @param B
  * @param C - out C = A .+ B
  */
+template< class T >
 __global__ void add(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 
@@ -25,6 +26,7 @@ __global__ void add(const GpuMat& A, const GpuMat& B, GpuMat& C)
  * @param B
  * @param C - out C = A .- B
  */
+template< class T >
 __global__ void sub(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 
@@ -36,6 +38,7 @@ __global__ void sub(const GpuMat& A, const GpuMat& B, GpuMat& C)
  * @param B
  * @param C - out C = A * B
  */
+template< class T >
 __global__ void matmul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 
@@ -47,6 +50,7 @@ __global__ void matmul(const GpuMat& A, const GpuMat& B, GpuMat& C)
  * @param B
  * @param C - out C = A' * B
  */
+template< class T >
 __global__ void matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 {
 
@@ -58,6 +62,7 @@ __global__ void matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
  * @param Bt - used as transposed matrix
  * @param C - out C = A * B'
  */
+template< class T >
 __global__ void matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
 {
 
@@ -69,6 +74,7 @@ __global__ void matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
  * @param value - mat 1x1
  * @param C - out C = A * value
  */
+template< class T >
 __global__ void mulval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 {
 
@@ -80,6 +86,7 @@ __global__ void mulval(const GpuMat& A, const GpuVal& value, GpuMat& C)
  * @param value - mat 1x1
  * @param C - out C = A + value
  */
+template< class T >
 __global__ void addval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 {
 
@@ -91,6 +98,7 @@ __global__ void addval(const GpuMat& A, const GpuVal& value, GpuMat& C)
  * @param value - mat 1x1
  * @param C - out C = A - value
  */
+template< class T >
 __global__ void subval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 {
 
@@ -102,6 +110,7 @@ __global__ void subval(const GpuMat& A, const GpuVal& value, GpuMat& C)
  * @param value - mat 1x1
  * @param C - out C = value - C
  */
+template< class T >
 __global__ void subval(const GpuVal& value, const GpuMat& A, GpuMat& C)
 {
 
@@ -112,6 +121,7 @@ __global__ void subval(const GpuVal& value, const GpuMat& A, GpuMat& C)
  * @param A - out A[i] = A[i] + bias
  * @param bias
  */
+template< class T >
 __global__ void biasPlus(GpuMat& A, const GpuMat& bias)
 {
 
@@ -123,6 +133,7 @@ __global__ void biasPlus(GpuMat& A, const GpuMat& bias)
  * @param B
  * @param C - out C = A .* B
  */
+template< class T >
 __global__ void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 
@@ -146,7 +157,14 @@ void cuda_add(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::add<<<dimGrid, dimBlock>>>(A, B, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::add<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::add<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	}
 }
 
 /**
@@ -165,7 +183,14 @@ void cuda_sub(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::sub<<<dimGrid, dimBlock>>>(A, B, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::sub<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::sub<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	}
 }
 
 /**
@@ -184,7 +209,14 @@ void cuda_matmul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::matmul<<<dimGrid, dimBlock>>>(A, B, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::matmul<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::matmul<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	}
 }
 
 /**
@@ -203,7 +235,14 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::matmulT1<<<dimGrid, dimBlock>>>(At, B, C);
+	switch (At.type) {
+	case GPU_DOUBLE:
+		internal::matmulT1<double> <<<dimGrid, dimBlock>>>(At, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::matmulT1<float> <<<dimGrid, dimBlock>>>(At, B, C);
+		break;
+	}
 }
 
 /**
@@ -222,7 +261,14 @@ void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::matmulT2<<<dimGrid, dimBlock>>>(A, Bt, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::matmulT2<double> <<<dimGrid, dimBlock>>>(A, Bt, C);
+		break;
+	case GPU_FLOAT:
+		internal::matmulT2<float> <<<dimGrid, dimBlock>>>(A, Bt, C);
+		break;
+	}
 }
 
 /**
@@ -241,7 +287,14 @@ void cuda_mulval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::mulval<<<dimGrid, dimBlock>>>(A, value, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::mulval<double> <<<dimGrid, dimBlock>>>(A, value, C);
+		break;
+	case GPU_FLOAT:
+		internal::mulval<float> <<<dimGrid, dimBlock>>>(A, value, C);
+		break;
+	}
 }
 
 /**
@@ -260,7 +313,14 @@ void cuda_addval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::addval<<<dimGrid, dimBlock>>>(A, value, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::addval<double> <<<dimGrid, dimBlock>>>(A, value, C);
+		break;
+	case GPU_FLOAT:
+		internal::addval<float> <<<dimGrid, dimBlock>>>(A, value, C);
+		break;
+	}
 }
 
 /**
@@ -279,7 +339,14 @@ void cuda_subval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::subval<<<dimGrid, dimBlock>>>(A, value, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::subval<double> <<<dimGrid, dimBlock>>>(A, value, C);
+		break;
+	case GPU_FLOAT:
+		internal::subval<float> <<<dimGrid, dimBlock>>>(A, value, C);
+		break;
+	}
 }
 
 /**
@@ -298,7 +365,14 @@ void cuda_subval(const GpuVal& value, const GpuMat& A, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::subval<<<dimGrid, dimBlock>>>(value, A, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::subval<double> <<<dimGrid, dimBlock>>>(value, A, C);
+		break;
+	case GPU_FLOAT:
+		internal::subval<float> <<<dimGrid, dimBlock>>>(value, A, C);
+		break;
+	}
 }
 
 /**
@@ -316,7 +390,14 @@ void cuda_biasPlus(GpuMat& A, const GpuMat& bias)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::biasPlus<<<dimGrid, dimBlock>>>(A, bias);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::biasPlus<double> <<<dimGrid, dimBlock>>>(A, bias);
+		break;
+	case GPU_FLOAT:
+		internal::biasPlus<float> <<<dimGrid, dimBlock>>>( A, bias);
+		break;
+	}
 }
 
 /**
@@ -335,5 +416,12 @@ void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::elemiseMul<<<dimGrid, dimBlock>>>(A, B, C);
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::elemiseMul<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::elemiseMul<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	}
 }
