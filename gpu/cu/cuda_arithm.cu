@@ -613,8 +613,8 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 	//	int r = At.cols;
 	//	int c = B.cols;
 
-	int x1 = At.rows / BLOCKSIZE + 1;
-	int x2 = B.cols / BLOCKSIZE + 1;
+	int x1 = B.cols / BLOCKSIZE + 1;
+	int x2 = At.cols / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -637,8 +637,8 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 extern "C"
 void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
 {
-	int x1 = A.rows / BLOCKSIZE + 1;
-	int x2 = A.cols / BLOCKSIZE + 1;
+	int x1 = Bt.rows / BLOCKSIZE + 1;
+	int x2 = A.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
