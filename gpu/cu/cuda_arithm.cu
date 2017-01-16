@@ -1,4 +1,6 @@
 #include <cuda_runtime.h>
+#include <curand.h>
+#include <curand_kernel.h>
 
 #include "gpumat.h"
 
@@ -46,9 +48,9 @@ struct Vls{
 
 /**
  * @brief memset
- * @param A
- * @param B
- * @param C - out C = A .+ B
+ * @param A = val
+ * @param val
+
  */
 template< class T >
 __global__ void memset(Mtx A, T val)
@@ -503,9 +505,8 @@ __global__ void div_row(Mtx C, Mtx rows)
 
 /**
  * @brief cuda_memset
- * @param A
- * @param B
- * @param C - out C = A .+ B
+ * @param A = val
+ * @param val
  */
 extern "C"
 void cuda_memset(GpuMat& A, double val)
