@@ -4,22 +4,34 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += main.cpp \
-    gpumat.cpp \
-    shared_memory.cpp \
-    custom_types.cpp
+    gpu/gpumat.cpp \
+    arithm/shared_memory.cpp \
+    arithm/custom_types.cpp
+
+HEADERS +=							\
+    $$PWD/mats.h					\
+    $$PWD/gpu/gpumat.h				\
+    $$PWD/arithm/shared_memory.h	\
+    $$PWD/arithm/custom_types.h
+
+
+INCLUDEPATH += $$PWD/		\
+               $$PWD/arithm	\
+               $$PWD/gpu/
 
 #CUDA_DIR = "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/"
 #SYSTEM_TYPE = x64
 #SYSTEM_NAME = Win32
 
-INCLUDEPATH += $$CUDA_DIR/include
+
+INCLUDEPATH += $$CUDA_DIR/include \
 
 DISTFILES += \
-    cuda_code.cu \
-    cuda_arithm.cu
+    gpu/cu/cuda_code.cu \
+    gpu/cu/cuda_arithm.cu
 
-CUDA_SOURCES += cuda_code.cu \
-                cuda_arithm.cu
+CUDA_SOURCES += gpu/cu/cuda_code.cu \
+                gpu/cu/cuda_arithm.cu
 
 win32{
     CUDA_DIR					= "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/"
@@ -93,9 +105,3 @@ win32{
 }else{
     QMAKE_CXXFLAGS += -fopenmp
 }
-
-HEADERS += \
-    mats.h \
-    gpumat.h \
-    shared_memory.h \
-    custom_types.h
