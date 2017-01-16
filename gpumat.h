@@ -163,12 +163,47 @@ void biasPlus(GpuMat& A, const GpuMat& bias);
  */
 void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
- * @brief transpose
+ * @brief elemiseDiv
  * @param A
  * @param B
- * @param C - out C = A .* B
+ * @param C - out C = A ./ B
+ */
+void elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
+/**
+ * @brief elemiseSqrt
+ * @param A
+ * @param B
+ * @param C - out C = sqrt(A)
+ */
+void elemiseSqrt(const GpuMat& A, GpuMat& C);
+/**
+ * @brief transpose
+ * @param A
+ * @param C - out C = A'
  */
 void transpose(const GpuMat& A, GpuMat& C);
+/**
+ * @brief reLu
+ * @param A
+ * @param B
+ * @param C - out C = reLu(A)
+ */
+void reLu(const GpuMat& A, GpuMat& C);
+/**
+ * @brief deriv_reLu
+ * @param A
+ * @param B
+ * @param C - out C = deriv_reLu(A)
+ */
+void deriv_reLu(const GpuMat& A, GpuMat& C);
+/**
+ * @brief softmax
+ * @param A
+ * @param axis -> 0 - in row, 1 - in col
+ * @param C = softmax(A)
+ * @param partZ = sum(exp(A), axis)
+ */
+void softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
 
 }
 

@@ -447,12 +447,55 @@ extern "C"
 void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
+ * @brief elemiseDiv
+ * @param A
+ * @param B
+ * @param C - out C = A ./ B
+ */
+extern "C"
+void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
+
+/**
+ * @brief elemiseSqrt
+ * @param A
+ * @param B
+ * @param C - out C = sqrt(A)
+ */
+extern "C"
+void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C);
+
+/**
  * @brief cuda_transpose
  * @param A
  * @param C = A'
  */
 extern "C"
 void cuda_transpose(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_reLu
+ * @param A
+ * @param C = reLu(A)
+ */
+extern "C"
+void cuda_reLu(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_derivReLu
+ * @param A
+ * @param C = derivRelu(A)
+ */
+extern "C"
+void cuda_derivReLu(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_softmax
+ * @param A
+ * @param axis -> 0 - in row, 1 - in col
+ * @param C = softmax(A)
+ */
+extern "C"
+void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
 
 /////////////////////////////////////////////////
 
@@ -509,8 +552,8 @@ void matmulT1(const GpuMat &At, const GpuMat &B, GpuMat &C)
 	if(At.rows != B.rows || At.type != B.type)
 		return;
 
-	if(C.rows != At.cols || C.cols != B.rows || C.type != At.type)
-		C.resize(At.cols, B.rows, At.type);
+	if(C.rows != At.cols || C.cols != B.cols || C.type != At.type)
+		C.resize(At.cols, B.cols, At.type);
 
 	cuda_matmulT1(At, B, C);
 }
@@ -591,6 +634,18 @@ void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	cuda_elemiseMul(A, B, C);
 }
 
+void elemiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_elemiseDiv(A, B, C);
+}
+
+
 void transpose(const GpuMat &A, GpuMat &C)
 {
 	if(A.empty())
@@ -601,6 +656,62 @@ void transpose(const GpuMat &A, GpuMat &C)
 
 	cuda_transpose(A, C);
 
+}
+
+void elemiseSqrt(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty())
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_elemiseSqrt(A, C);
+}
+
+void reLu(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty())
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_reLu(A, C);
+}
+
+void deriv_reLu(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty())
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_derivReLu(A, C);
+}
+
+void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)
+{
+	if(A.empty())
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	if(axis == 0){
+		if(partZ.cols != A.cols || partZ.rows != 1){
+			partZ.resize(1, A.cols, A.type);
+		}
+	}
+	if(axis == 1){
+		if(axis == 1 || partZ.rows != A.rows || partZ.cols != 1){
+			partZ.resize(A.rows, 1, A.type);
+		}
+	}
+	partZ.zeros();
+
+	cuda_softmax(A, axis, C, partZ);
 }
 
 }

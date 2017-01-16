@@ -61,7 +61,20 @@ void test_cuda()
 	std::cout << endl;								\
 }
 
-	ct::Matd A(15, 8), B(8, 3), C(15, 8);
+#define PRINT_MAT(result, caption)	{				\
+	std::string s = (std::string)result();			\
+	std::cout << caption << endl << s.c_str();		\
+	std::cout << endl;								\
+}
+
+#define CALC_MAT(_void_, result, caption)	{		\
+	_void_;											\
+	std::string s = (std::string)result();			\
+	std::cout << caption << endl << s.c_str();		\
+	std::cout << endl;								\
+}
+
+	ct::Matd A(30, 8), B(8, 3), C(30, 8);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i;
@@ -79,9 +92,11 @@ void test_cuda()
 	gpumat::GpuMat gC(C.rows, C.cols, gpumat::GPU_DOUBLE, C.ptr());
 	gpumat::GpuMat gB(B.rows, B.cols, gpumat::GPU_DOUBLE, B.ptr());
 
-	gpumat::GpuMat gD, gD1, gE, gF, gG, gH, gI, gJ;
-	gpumat::GpuVal gv1(3.);
+	gpumat::GpuVal gv1(3.), gv2(0.001);
 
+	PRINT_MAT(gA, "A");
+	PRINT_MAT(gB, "B");
+	PRINT_MAT(gC, "C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::add(gA, gC, R), "A + C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sub(gA, gC, R), "A - C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::addval(gA, gv1, R), "A + 3");
@@ -91,6 +106,19 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, R, gpumat::elemiseMul(gA, gC, R), "A .* C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A * B");
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
+
+	gpumat::GpuMat gAt, gBt, partZ;
+
+	gpumat::transpose(gA, gAt);
+	gpumat::transpose(gB, gBt);
+
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT1(gAt, gB, R), "At * B");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT2(gA, gBt, R), "A * Bt");
+
+	PRINT_MAT(gA, "A");
+	CALC_MAT(gpumat::mulval(gA, gv2, gB), gB, "B");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::softmax(gB, 1, R, partZ), "softmax");
+	PRINT_MAT(partZ, "partZ");
 
 	gA.ones();
 	gB.ones();
