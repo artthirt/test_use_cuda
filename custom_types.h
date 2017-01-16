@@ -562,6 +562,21 @@ public:
 	inline int total() const{
 		return rows * cols;
 	}
+	void setSize(int rows, int cols){
+		if(!empty()){
+			if(rows == this->rows && cols == this->rows)
+				return;
+			this->rows = rows;
+			this->cols = cols;
+			val().resize(rows * cols);
+		}else{
+			this->rows = rows;
+			this->cols = cols;
+			val = sm::make_shared<vtype>();
+			val().resize(rows * cols);
+		}
+	}
+
 	///********************
 	inline T* ptr(){
 		T* val = &(*this->val)[0];
@@ -981,11 +996,8 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Mat_<T>& m2)
 
 #pragma omp parallel for
 	for(int i = 0; i < m1.rows; i++){
-#ifdef __GNUC__
-#pragma omp simd
-#else
+
 #pragma omp parallel for
-#endif
 		for(int k = 0; k < m2.cols; k++){
 			T s = 0;
 			for(int j = 0; j < m1.cols; j++){
@@ -1498,6 +1510,137 @@ inline Mat_<T> elemwiseDiv(const Mat_<T>& m1, const Mat_<T>& m2)
 	}
 	return res;
 }
+
+/**
+ * @brief matmulT1
+ * @param At
+ * @param B
+ * @param C = A' * B
+ */
+template< typename T >
+void matmulT1(const Mat_<T>& At, const Mat_<T>& B, Mat_<T>& C)
+{
+	if(At.rows != B.rows)
+		return;
+	int r = At.cols;
+	int c = B.cols;
+	if(C.rows != r && C.cols != c)
+		C.setSize(r, c);
+
+	T* valr = &(*C.val)[0];
+	T* val1 = &(*At.val)[0];
+	T* val2 = &(*B.val)[0];
+
+#pragma omp parallel for
+	for(int i = 0; i < At.cols; i++){
+
+#pragma omp parallel for
+		for(int k = 0; k < B.cols; k++){
+			T s = 0;
+			for(int j = 0; j < At.rows; j++){
+				s += val1[j * At.cols + i]/*at(i, j)*/ * val2[j * B.cols + k]/*at(j, k)*/;
+			}
+			valr[i * C.cols + k] = s;
+//			res.at(i, k) = s;
+		}
+	}
+
+}
+
+/**
+ * @brief matmulT1
+ * @param A
+ * @param Bt
+ * @param C = A * B'
+ */
+template< typename T >
+void matmulT2(const Mat_<T>& A, const Mat_<T>& Bt, Mat_<T>& C)
+{
+	if(A.cols != Bt.cols)
+		return;
+	int r = A.rows;
+	int c = Bt.rows;
+	if(C.rows != r && C.cols != c)
+		C.setSize(r, c);
+
+	T* valr = &(*C.val)[0];
+	T* val1 = &(*A.val)[0];
+	T* val2 = &(*Bt.val)[0];
+
+#pragma omp parallel for
+	for(int i = 0; i < A.rows; i++){
+
+#pragma omp parallel for
+		for(int k = 0; k < Bt.rows; k++){
+			T s = 0;
+			for(int j = 0; j < A.cols; j++){
+				s += val1[i * A.cols + j]/*at(i, j)*/ * val2[k * Bt.cols + j]/*at(j, k)*/;
+			}
+			valr[i * C.cols + k] = s;
+		}
+	}
+
+}
+
+template< typename T >
+void dropout(Mat_<T>& mat, T p, Mat_<T>& D, Mat_<T>& Dt, int seed = 0)
+{
+	std::binomial_distribution<int> bi(1, p);
+	//std::normal_distribution< double > nrm(0, 1);
+	std::mt19937 gen;
+	gen.seed(seed);
+
+	D = Mat_<T>::ones(mat.rows, mat.cols);
+	Dt = Mat_<T>::ones(mat.cols, mat.rows);
+
+	T* val1 = &(*D.val)[0];
+	T* val2 = &(*Dt.val)[0];
+
+#pragma omp parallel for
+	for(int i = 0; i < mat.rows; i++){
+		int pi = bi(gen);
+		if(!pi){
+#pragma omp parallel for
+			for(int j = 0; j < mat.cols; j++){
+				val1[i * D.cols + j] = 0;
+				val2[j * D.rows + i] = 0;
+			}
+		}
+	}
+	elemwiseMult(mat, D);
+}
+
+/**
+ * @brief dropout_transpose
+ * @param mat
+ * @param D
+ */
+template< typename T >
+void dropout_transpose(Mat_<T>& mat, const Mat_<T>& D)
+{
+	elemwiseMult(mat, D);
+}
+
+//////////////////////////////////////////
+
+template< typename T >
+bool operator==(const Mat_<T>& A, const Mat_<T>& B)
+{
+	if(A.cols != B.cols || A.rows != B.rows)
+		return false;
+
+	T* val1 = &(*A.val)[0];
+	T* val2 = &(*B.val)[0];
+	T eps = 0;
+#pragma omp parallel for shared(eps)
+	for(int i = 0; i < A.total(); i++){
+		eps += std::abs(val1[i] - val2[i]);
+	}
+	if(eps < 1e-9)
+		return true;
+	return false;
+}
+
 
 //////////////////////////////////////////
 

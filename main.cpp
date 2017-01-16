@@ -5,8 +5,13 @@
 #include <chrono>
 
 #include <cuda_runtime.h>
+#include <vector_types.h>
 
 #include "mats.h"
+
+#include "gpumat.h"
+
+#include <custom_types.h>
 
 using namespace std;
 
@@ -46,10 +51,58 @@ void print_mat(const mats::Mat<T>& mc, const std::string& caption, const std::st
 	fs.close();
 }
 
+void test_cuda()
+{
+#define TEST_VOID(type, result, _void_, caption) {	\
+	type result;									\
+	_void_;											\
+	std::string s = (std::string)result();			\
+	std::cout << caption << endl << s.c_str();		\
+	std::cout << endl;								\
+}
+
+	ct::Matd A(15, 8), B(8, 3), C(15, 8);
+
+	for(int i = 0; i < A.total(); i++){
+		A.ptr()[i] = i;
+		C.ptr()[i] = 11. + C.total() - i;
+	}
+	for(int i = 0; i < B.total(); i++){
+		B.ptr()[i] = i;
+	}
+
+//	A.randn(0, 1, 0);
+//	B.randn(0, 1, 1);
+//	C.randn(0, 1, 2);
+
+	gpumat::GpuMat gA(A.rows, A.cols, gpumat::GPU_DOUBLE, A.ptr());
+	gpumat::GpuMat gC(C.rows, C.cols, gpumat::GPU_DOUBLE, C.ptr());
+	gpumat::GpuMat gB(B.rows, B.cols, gpumat::GPU_DOUBLE, B.ptr());
+
+	gpumat::GpuMat gD, gD1, gE, gF, gG, gH, gI, gJ;
+	gpumat::GpuVal gv1(3.);
+
+	TEST_VOID(gpumat::GpuMat, R, gpumat::add(gA, gC, R), "A + C");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::sub(gA, gC, R), "A - C");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::addval(gA, gv1, R), "A + 3");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::subval(gA, gv1, R), "A - 3");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::subval(gv1, gA, R), "3 - A");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::mulval(gA, gv1, R), "A * 3");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::elemiseMul(gA, gC, R), "A .* C");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A * B");
+	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
+
+	gA.ones();
+	gB.ones();
+
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A(1) * B(1)");
+}
+
 int main(int argc, char *argv[])
 {
 	using namespace mats;
 
+#if 0
 	// run your cuda application
 	cudaError_t cuerr = cuda_main();
 	// check for errors is always a good practice!
@@ -91,7 +144,9 @@ int main(int argc, char *argv[])
 	print_mat(ma, "A", "mat.txt");
 	print_mat(mb, "B", "mat.txt");
 	print_mat(mc, "C", "mat.txt");
+#endif
 
-	cout << err << " " << "Hello World!" << endl;
+	test_cuda();
+
 	return 0;
 }

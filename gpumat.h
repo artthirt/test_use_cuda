@@ -4,13 +4,16 @@
 #include <iostream>
 #include <vector>
 
+#ifdef _MSC_VER
+	typedef unsigned char u_char;
+#endif
+
 namespace gpumat{
 
 enum{
 	GPU_FLOAT,
 	GPU_DOUBLE
 };
-
 
 class GpuMat{
 public:
@@ -21,17 +24,31 @@ public:
 
 	GpuMat();
 	GpuMat(int rows, int cols, int type);
+	GpuMat(int rows, int cols, int type, void* data);
 	GpuMat(const GpuMat& mat);
 	~GpuMat();
 
 	GpuMat &operator =(const GpuMat& mat);
 
+	////////////
+
+	GpuMat& ones();
+	GpuMat& zeros();
+
+	////////////
+
 	int depth() const;
 	int size() const;
 	int total() const;
+	bool empty() const;
 
 	void resize(int rows, int cols, int type);
 	void resize(const GpuMat& mat);
+
+	void setData(void* data);
+	void getData(void* data);
+
+	std::string operator()() const;
 
 	void release();
 
@@ -51,8 +68,10 @@ public:
 
 	GpuVal &operator=(const GpuVal& val);
 
+	void setValue(double val);
+
 	double toDouble() const;
-	double toFloat() const;
+	float toFloat() const;
 
 	int size();
 	void release();
@@ -60,6 +79,13 @@ public:
 private:
 };
 
+
+/**
+ * @brief memset
+ * @param A
+ * @param val
+ */
+void memset(GpuMat& A, double val);
 /**
  * @brief add
  * @param A
@@ -136,6 +162,13 @@ void biasPlus(GpuMat& A, const GpuMat& bias);
  * @param C - out C = A .* B
  */
 void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
+/**
+ * @brief transpose
+ * @param A
+ * @param B
+ * @param C - out C = A .* B
+ */
+void transpose(const GpuMat& A, GpuMat& C);
 
 }
 

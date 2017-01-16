@@ -3,25 +3,24 @@
 
 #include <memory>
 
-#ifdef _MSCVER
-#include <chrono>
-#endif
-
 namespace mats{
 
 //////////////////////////////
 
-#ifdef _MSCVER
-/**
- * @brief getTick
- * @return
- */
-inline int64_t getTick()
-{
-	using namespace std::chrono;
-	milliseconds res = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
-	return res.count();
-}
+#ifdef _MSC_VER
+
+//#include <chrono>
+
+///**
+// * @brief getTick
+// * @return
+// */
+//inline int64_t getTick()
+//{
+//	using namespace std::chrono;
+//	milliseconds res = duration_cast< milliseconds >(system_clock::now().time_since_epoch());
+//	return res.count();
+//}
 
 #else
 
