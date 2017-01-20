@@ -55,6 +55,8 @@ public:
 	void setData(void* data);
 	void getData(void* data);
 
+	void swap_dims();
+
 	std::string operator()() const;
 
 	void release();
@@ -75,6 +77,22 @@ void memset(GpuMat& A, double val);
  * @param C - out C = A .+ B
  */
 void add(const GpuMat& A, const GpuMat& B, GpuMat& C);
+/**
+ * @brief add
+ * @param A
+ * @param val1
+ * @param B
+ * @param val2
+ * @param C
+ */
+void add(const GpuMat& A, double val1, const GpuMat& B, double val2, GpuMat& C);
+/**
+ * @brief add
+ * @param A
+ * @param val
+ * @param B
+ */
+void add(GpuMat& A, double val, const GpuMat& B);
 /**
  * @brief sub
  * @param A
@@ -110,6 +128,12 @@ void matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
  * @param C - out C = A * value
  */
 void mulval(const GpuMat& A, double value, GpuMat& C);
+/**
+ * @brief mulval
+ * @param A -> A *= value
+ * @param value - mat 1x1
+ */
+void mulval(GpuMat& A, double value);
 /**
  * @brief addval
  * @param A
@@ -176,6 +200,12 @@ void elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
  * @param C - out C = sqrt(A)
  */
 void elemiseSqrt(const GpuMat& A, GpuMat& C);
+/**
+ * @brief sumRows
+ * @param A
+ * @param C - out C[i] = val * sum(A[i, j]) (j = [1, cols])
+ */
+void sumRows(const GpuMat& A, GpuMat& C, double val = 1.);
 /**
  * @brief transpose
  * @param A

@@ -163,6 +163,11 @@ void GpuMat::getData(void *data)
 	cudaMemcpy(data, this->data, size(), cudaMemcpyDeviceToHost);
 }
 
+void GpuMat::swap_dims()
+{
+	std::swap(rows, cols);
+}
+
 //************
 
 template<typename T >
@@ -236,6 +241,26 @@ extern "C"
 void cuda_add(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
+ * @brief cuda_add_params
+ * @param A
+ * @param val1
+ * @param B
+ * @param val2
+ * @param C = val1 * A + val2 * B
+ */
+extern "C"
+void cuda_add_params(const GpuMat& A, double val1, const GpuMat& B, double val2, GpuMat& C);
+
+/**
+ * @brief cuda_add_paramsA
+ * @param A -> A += val1 * B
+ * @param val
+ * @param B
+ */
+extern "C"
+void cuda_add_paramsA(GpuMat& A, double val, const GpuMat& B);
+
+/**
  * @brief sub
  * @param A
  * @param B
@@ -279,6 +304,14 @@ void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
  */
 extern "C"
 void cuda_mulval(const GpuMat& A, double value, GpuMat& C);
+
+/**
+ * @brief mulval
+ * @param A -> A *= value
+ * @param value - mat 1x1
+ */
+extern "C"
+void cuda_mulvalA(const GpuMat& A, double value);
 
 /**
  * @brief addval
@@ -362,11 +395,18 @@ void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief elemiseSqrt
  * @param A
- * @param B
  * @param C - out C = sqrt(A)
  */
 extern "C"
 void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_sumrows
+ * @param A
+ * @param C - out C[i] = val * sum(A[i, j])(j = [1..cols])
+ */
+extern "C"
+void cuda_sumrows(const GpuMat& A, GpuMat& C, double val);
 
 /**
  * @brief cuda_transpose
@@ -429,6 +469,26 @@ void add(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	cuda_add(A, B, C);
 }
 
+
+void add(const GpuMat &A, double val1, const GpuMat &B, double val2, GpuMat &C)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_add_params(A, val1, B, val2, C);
+}
+
+void add(GpuMat &A, double val, const GpuMat &B)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	cuda_add_paramsA(A, val, B);
+}
+
 void sub(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
@@ -482,6 +542,11 @@ void mulval(const GpuMat &A, double value, GpuMat &C)
 	cuda_mulval(A, value, C);
 }
 
+void mulval(GpuMat& A, double value)
+{
+	cuda_mulvalA(A, value);
+}
+
 void addval(const GpuMat &A, double value, GpuMat &C)
 {
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
@@ -514,7 +579,6 @@ void subval(double value, const GpuMat &A, GpuMat &C)
 void subval(GpuMat &A, double value)
 {
 	cuda_subval_Aval(A, value);
-
 }
 
 void subval(double value, GpuMat &A)
@@ -619,6 +683,18 @@ void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)
 	partZ.zeros();
 
 	cuda_softmax(A, axis, C, partZ);
+}
+
+void sumRows(const GpuMat &A, GpuMat &C, double val)
+{
+	if(A.empty())
+		return;
+
+	if(A.rows != C.rows || C.cols != 1 || A.type != C.type){
+		C.resize(A.rows, 1, A.type);
+	}
+
+	cuda_sumrows(A, C, val);
 }
 
 }
