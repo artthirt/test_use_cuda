@@ -88,7 +88,7 @@ void test_cuda()
 //	B.randn(0, 1, 1);
 //	C.randn(0, 1, 2);
 
-	gpumat::GpuMat gA(A.rows, A.cols, gpumat::GPU_DOUBLE, A.ptr());
+	gpumat::GpuMat gA(A.rows, A.cols, gpumat::GPU_DOUBLE, A.ptr()), g_tmp;
 	gpumat::GpuMat gC(C.rows, C.cols, gpumat::GPU_DOUBLE, C.ptr());
 	gpumat::GpuMat gB(B.rows, B.cols, gpumat::GPU_DOUBLE, B.ptr());
 
@@ -106,6 +106,13 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, R, gpumat::elemiseMul(gA, gC, R), "A .* C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A * B");
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
+
+	g_tmp = gA;
+	CALC_MAT(gpumat::addval(g_tmp, gv1), g_tmp, "Atmp + 3");
+	g_tmp = gA;
+	CALC_MAT(gpumat::subval(g_tmp, gv1), g_tmp, "Atmp - 3");
+	g_tmp = gA;
+	CALC_MAT(gpumat::subval(gv1, g_tmp), g_tmp, "3 - Atmp");
 
 	gpumat::GpuMat gAt, gBt, partZ;
 

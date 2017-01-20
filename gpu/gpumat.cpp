@@ -46,9 +46,9 @@ GpuMat::GpuMat(int rows, int cols, int type, void *data)
 
 GpuMat::GpuMat(const GpuMat &mat)
 {
-	rows = this->rows;
-	cols = this->cols;
-	type = this->type;
+	rows = mat.rows;
+	cols = mat.cols;
+	type = mat.type;
 
 	if(mat.data){
 		cudaError_t err = cudaMalloc((void**)&data, mat.size());
@@ -63,14 +63,21 @@ GpuMat::~GpuMat()
 
 GpuMat &GpuMat::operator =(const GpuMat &mat)
 {
-	release();
+	if(!mat.data)
+		return *this;
 
-	rows = this->rows;
-	cols = this->cols;
-	type = this->type;
+	cudaError_t err = cudaSuccess;
+	if(mat.rows != rows || mat.cols != cols || mat.type != mat.type){
+		release();
 
-	if(mat.data){
-		cudaError_t err = cudaMalloc(&data, mat.size());
+		rows = mat.rows;
+		cols = mat.cols;
+		type = mat.type;
+
+		err = cudaMalloc(&data, mat.size());
+	}
+
+	if(mat.data && err == cudaSuccess ){
 		err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
 	}
 	return *this;
@@ -95,15 +102,7 @@ GpuMat &GpuMat::zeros()
 
 int GpuMat::depth() const
 {
-	switch (type) {
-		case GPU_FLOAT:
-			return sizeof(float);
-		case GPU_DOUBLE:
-			return sizeof(double);
-		default:
-			break;
-	}
-	return 0;
+	return SIZEOF_TYPE(type);
 }
 
 int GpuMat::size() const
@@ -123,6 +122,11 @@ bool GpuMat::empty() const
 
 void GpuMat::resize(int rows, int cols, int type)
 {
+	int sz = rows * cols * SIZEOF_TYPE(type);
+
+	if(sz == size())
+		return;
+
 	release();
 
 	this->rows = rows;
@@ -164,6 +168,8 @@ void GpuMat::getData(void *data)
 template<typename T >
 std::string getString(void* data, int rows, int cols)
 {
+	if(!rows || !cols)
+		return "";
 	std::vector<T> vec;
 	vec.resize(rows * cols);
 
@@ -206,134 +212,6 @@ void GpuMat::release()
 	if(data){
 		cudaFree(data);
 		data = 0;
-	}
-}
-
-/////////////////////////////////////////////////
-
-template< typename T >
-void toValue(const GpuVal& val, T& res)
-{
-	res = T(0);
-	switch (val.type) {
-		case GPU_FLOAT:
-		{
-			float tmp;
-			cudaMemcpy(&tmp, val.value, sizeof(float), cudaMemcpyDeviceToHost);
-			res = tmp;
-		}
-			break;
-		case GPU_DOUBLE:
-		{
-			double tmp;
-			cudaMemcpy(&tmp, val.value, sizeof(double), cudaMemcpyDeviceToHost);
-			res = tmp;
-		}
-			break;
-		default:
-			break;
-	}
-}
-
-///////////////////////////////
-
-GpuVal::GpuVal()
-{
-	type = 0;
-	value = 0;
-}
-
-GpuVal::GpuVal(float value)
-{
-	type = GPU_FLOAT;
-	cudaError_t err = cudaMalloc(&this->value, size());
-	err = cudaMemcpy(this->value, &value, sizeof(float), cudaMemcpyHostToDevice);
-}
-
-GpuVal::GpuVal(double value)
-{
-	type = GPU_DOUBLE;
-	cudaError_t err = cudaMalloc(&this->value, size());
-	err = cudaMemcpy(this->value, &value, sizeof(double), cudaMemcpyHostToDevice);
-}
-
-GpuVal::GpuVal(const GpuVal &val)
-{
-	type = val.type;
-
-	cudaError_t err = cudaMalloc(&this->value, size());
-	err = cudaMemcpy(this->value, &val.value, sizeof(double), cudaMemcpyDeviceToDevice);
-}
-
-GpuVal::~GpuVal()
-{
-	release();
-}
-
-GpuVal &GpuVal::operator=(const GpuVal &val)
-{
-	release();
-	type = val.type;
-
-	cudaError_t err = cudaMalloc(&this->value, size());
-	err = cudaMemcpy(this->value, &val.value, sizeof(double), cudaMemcpyDeviceToDevice);
-	return *this;
-}
-
-template<typename T>
-void setVal(void* data, T val)
-{
-	cudaMemcpy(data, &val, sizeof(val), cudaMemcpyHostToDevice);
-}
-
-void GpuVal::setValue(double val)
-{
-	switch (this->type) {
-		case GPU_FLOAT:
-			setVal<float>(value, (float)val);
-			break;
-		case GPU_DOUBLE:
-			setVal<double>(value, (double)val);
-			break;
-		default:
-			break;
-	}
-}
-
-double GpuVal::toDouble() const
-{
-	double res;
-	toValue(*this, res);
-
-	return res;
-}
-
-float GpuVal::toFloat() const
-{
-	float res;
-	toValue(*this, res);
-
-	return res;
-}
-
-int GpuVal::size()
-{
-	switch (type) {
-		case GPU_FLOAT:
-			return sizeof(float);
-		case GPU_DOUBLE:
-			return sizeof(double);
-		default:
-			break;
-	}
-}
-
-void GpuVal::release()
-{
-	if(value){
-		cudaFree(value);
-		value = 0;
-		type = 0;
 	}
 }
 
@@ -412,13 +290,22 @@ extern "C"
 void cuda_addval(const GpuMat& A, double value, GpuMat& C);
 
 /**
+ * @brief addval
+ * @param A
+ * @param value - mat 1x1
+ * @param C - out C = A + value
+ */
+extern "C"
+void cuda_addvalA(GpuMat& A, double value);
+
+/**
  * @brief subval
  * @param A
  * @param value - mat 1x1
  * @param C - out C = A - value
  */
 extern "C"
-void cuda_subval_Aval(const GpuMat& A, double value, GpuMat& C);
+void cuda_subval_AvaltoC(const GpuMat& A, double value, GpuMat& C);
 
 /**
  * @brief subval
@@ -427,8 +314,25 @@ void cuda_subval_Aval(const GpuMat& A, double value, GpuMat& C);
  * @param C - out C = value - C
  */
 extern "C"
-void cuda_subval_valA(double value, const GpuMat& A, GpuMat& C);
+void cuda_subval_valA(GpuMat& A, double value);
 
+/**
+ * @brief subval
+ * @param A
+ * @param value - mat 1x1
+ * @param C - out C = A - value
+ */
+extern "C"
+void cuda_subval_Aval(GpuMat& A, double value);
+
+/**
+ * @brief subval
+ * @param A
+ * @param value - mat 1x1
+ * @param C - out C = value - C
+ */
+extern "C"
+void cuda_subval_valAtoC(double value, const GpuMat& A, GpuMat& C);
 /**
  * @brief biasPlus
  * @param A - out A[i] = A[i] + bias
@@ -586,12 +490,17 @@ void addval(const GpuMat &A, double value, GpuMat &C)
 	cuda_addval(A, value, C);
 }
 
+void addval(GpuMat& A, double value)
+{
+	cuda_addvalA(A, value);
+}
+
 void subval(const GpuMat &A, double value, GpuMat &C)
 {
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_subval_Aval(A, value, C);
+	cuda_subval_AvaltoC(A, value, C);
 }
 
 void subval(double value, const GpuMat &A, GpuMat &C)
@@ -599,9 +508,19 @@ void subval(double value, const GpuMat &A, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_subval_valA(value, A, C);
+	cuda_subval_valAtoC(value, A, C);
 }
 
+void subval(GpuMat &A, double value)
+{
+	cuda_subval_Aval(A, value);
+
+}
+
+void subval(double value, GpuMat &A)
+{
+	cuda_subval_valA(A, value);
+}
 
 void biasPlus(GpuMat &A, const GpuMat &bias)
 {

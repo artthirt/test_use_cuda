@@ -11,9 +11,16 @@
 namespace gpumat{
 
 enum{
-	GPU_FLOAT,
+	GPU_FLOAT = 0,
 	GPU_DOUBLE
 };
+
+const int sizeof_enum[] = {
+	sizeof(float),		/// GPU_FLOAT
+	sizeof(double)		/// GPU_DOUBLE
+};
+
+#define SIZEOF_TYPE(type) (sizeof_enum[type])
 
 class GpuMat{
 public:
@@ -54,31 +61,6 @@ public:
 
 private:
 };
-
-class GpuVal{
-public:
-	int type;
-	u_char* value;
-
-	GpuVal();
-	GpuVal(float value);
-	GpuVal(double value);
-	GpuVal(const GpuVal& val);
-	~GpuVal();
-
-	GpuVal &operator=(const GpuVal& val);
-
-	void setValue(double val);
-
-	double toDouble() const;
-	float toFloat() const;
-
-	int size();
-	void release();
-
-private:
-};
-
 
 /**
  * @brief memset
@@ -136,6 +118,12 @@ void mulval(const GpuMat& A, double value, GpuMat& C);
  */
 void addval(const GpuMat& A, double value, GpuMat& C);
 /**
+ * @brief addval
+ * @param A
+ * @param value - mat 1x1
+ */
+void addval(GpuMat &A, double value);
+/**
  * @brief subval
  * @param A
  * @param value - mat 1x1
@@ -149,6 +137,18 @@ void subval(const GpuMat& A, double value, GpuMat& C);
  * @param C - out C = value - C
  */
 void subval(double value, const GpuMat& A, GpuMat& C);
+/**
+ * @brief subval
+ * @param A - > A - value
+ * @param value - mat 1x1
+ */
+void subval(GpuMat& A, double value);
+/**
+ * @brief subval
+ * @param A -> value - A
+ * @param value - mat 1x1
+ */
+void subval(double value, GpuMat& A);
 /**
  * @brief biasPlus
  * @param A - out A[i] = A[i] + bias
