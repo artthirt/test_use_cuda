@@ -400,7 +400,7 @@ void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
  * @param C - out C = A * value
  */
 extern "C"
-void cuda_mulval(const GpuMat& A, const GpuVal& value, GpuMat& C);
+void cuda_mulval(const GpuMat& A, double value, GpuMat& C);
 
 /**
  * @brief addval
@@ -409,7 +409,7 @@ void cuda_mulval(const GpuMat& A, const GpuVal& value, GpuMat& C);
  * @param C - out C = A + value
  */
 extern "C"
-void cuda_addval(const GpuMat& A, const GpuVal& value, GpuMat& C);
+void cuda_addval(const GpuMat& A, double value, GpuMat& C);
 
 /**
  * @brief subval
@@ -418,7 +418,7 @@ void cuda_addval(const GpuMat& A, const GpuVal& value, GpuMat& C);
  * @param C - out C = A - value
  */
 extern "C"
-void cuda_subval_Aval(const GpuMat& A, const GpuVal& value, GpuMat& C);
+void cuda_subval_Aval(const GpuMat& A, double value, GpuMat& C);
 
 /**
  * @brief subval
@@ -427,7 +427,7 @@ void cuda_subval_Aval(const GpuMat& A, const GpuVal& value, GpuMat& C);
  * @param C - out C = value - C
  */
 extern "C"
-void cuda_subval_valA(const GpuVal& value, const GpuMat& A, GpuMat& C);
+void cuda_subval_valA(double value, const GpuMat& A, GpuMat& C);
 
 /**
  * @brief biasPlus
@@ -570,44 +570,32 @@ void matmulT2(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
 }
 
 
-void mulval(const GpuMat &A, const GpuVal &value, GpuMat &C)
+void mulval(const GpuMat &A, double value, GpuMat &C)
 {
-	if(A.type != value.type)
-		return;
-
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
 	cuda_mulval(A, value, C);
 }
 
-void addval(const GpuMat &A, const GpuVal &value, GpuMat &C)
+void addval(const GpuMat &A, double value, GpuMat &C)
 {
-	if(A.type != value.type)
-		return;
-
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
 	cuda_addval(A, value, C);
 }
 
-void subval(const GpuMat &A, const GpuVal &value, GpuMat &C)
+void subval(const GpuMat &A, double value, GpuMat &C)
 {
-	if(A.type != value.type)
-		return;
-
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
 	cuda_subval_Aval(A, value, C);
 }
 
-void subval(const GpuVal &value, const GpuMat &A, GpuMat &C)
+void subval(double value, const GpuMat &A, GpuMat &C)
 {
-	if(A.type != value.type)
-		return;
-
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 

@@ -92,7 +92,7 @@ void test_cuda()
 	gpumat::GpuMat gC(C.rows, C.cols, gpumat::GPU_DOUBLE, C.ptr());
 	gpumat::GpuMat gB(B.rows, B.cols, gpumat::GPU_DOUBLE, B.ptr());
 
-	gpumat::GpuVal gv1(3.), gv2(0.001);
+	double gv1(3.), gv2(0.001);
 
 	PRINT_MAT(gA, "A");
 	PRINT_MAT(gB, "B");

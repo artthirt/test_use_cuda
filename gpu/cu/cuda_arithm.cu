@@ -31,19 +31,6 @@ struct Mtx{
 	}
 };
 
-struct Vls{
-	u_char* value;
-	Vls(){
-		value = 0;
-	}
-	Vls(void* val){
-		this->value = (u_char*)val;
-	}
-	Vls(const GpuVal& val){
-		value = val.value;
-	}
-};
-
 #define BLOCKSIZE	16
 
 /**
@@ -193,17 +180,16 @@ __global__ void matmulT2(Mtx A, Mtx Bt, Mtx C)
  * @param C - out C = A * value
  */
 template< class T >
-__global__ void mulval(Mtx A, Vls value, Mtx C)
+__global__ void mulval(Mtx A, T value, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
 	T* dA =(T*) A.data;
-	T val = *(T*)value.value;
 	T* dC = (T*)C.data;
 
 	if(row < A.rows && col < A.cols)
-		dC[row * C.cols + col] = dA[row * A.cols + col] * val;
+		dC[row * C.cols + col] = dA[row * A.cols + col] * value;
 }
 
 /**
@@ -213,17 +199,16 @@ __global__ void mulval(Mtx A, Vls value, Mtx C)
  * @param C - out C = A + value
  */
 template< class T >
-__global__ void addval(Mtx A, Vls value, Mtx C)
+__global__ void addval(Mtx A, T value, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
 	T* dA = (T*)A.data;
-	T val = *(T*)value.value;
 	T* dC = (T*)C.data;
 
 	if(row < A.rows && col < A.cols)
-		dC[row * C.cols + col] = dA[row * A.cols + col] + val;
+		dC[row * C.cols + col] = dA[row * A.cols + col] + value;
 }
 
 /**
@@ -233,17 +218,16 @@ __global__ void addval(Mtx A, Vls value, Mtx C)
  * @param C - out C = A - value
  */
 template< class T >
-__global__ void subval(Mtx A, Vls value, Mtx C)
+__global__ void subval(Mtx A, T value, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
 	T* dA = (T*)A.data;
-	T val = *(T*)value.value;
 	T* dC = (T*)C.data;
 
 	if(row < A.rows && col < A.cols)
-		dC[row * C.cols + col] = dA[row * A.cols + col] - val;
+		dC[row * C.cols + col] = dA[row * A.cols + col] - value;
 }
 
 /**
@@ -253,17 +237,16 @@ __global__ void subval(Mtx A, Vls value, Mtx C)
  * @param C - out C = value - C
  */
 template< class T >
-__global__ void subval(Vls value, Mtx A, Mtx C)
+__global__ void subval(T value, Mtx A, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
 	T* dA =(T*) A.data;
-	T val = *(T*)value.value;
 	T* dC = (T*)C.data;
 
 	if(row < A.rows && col < A.cols)
-		dC[row * C.cols + col] = val - dA[row * A.cols + col];
+		dC[row * C.cols + col] = value - dA[row * A.cols + col];
 
 }
 
@@ -659,7 +642,7 @@ void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
  * @param C - out C = A * value
  */
 extern "C"
-void cuda_mulval(const GpuMat& A, const GpuVal& value, GpuMat& C)
+void cuda_mulval(const GpuMat& A, double value, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -668,10 +651,10 @@ void cuda_mulval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::mulval<double> <<<dimGrid, dimBlock>>>(A, value, C);
+		internal::mulval<double> <<<dimGrid, dimBlock>>>(A, (double)value, C);
 		break;
 	case GPU_FLOAT:
-		internal::mulval<float> <<<dimGrid, dimBlock>>>(A, value, C);
+		internal::mulval<float> <<<dimGrid, dimBlock>>>(A, (float)value, C);
 		break;
 	}
 }
@@ -683,7 +666,7 @@ void cuda_mulval(const GpuMat& A, const GpuVal& value, GpuMat& C)
  * @param C - out C = A + value
  */
 extern "C"
-void cuda_addval(const GpuMat& A, const GpuVal& value, GpuMat& C)
+void cuda_addval(const GpuMat& A, double value, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -692,10 +675,10 @@ void cuda_addval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::addval<double> <<<dimGrid, dimBlock>>>(A, value, C);
+		internal::addval<double> <<<dimGrid, dimBlock>>>(A, (double)value, C);
 		break;
 	case GPU_FLOAT:
-		internal::addval<float> <<<dimGrid, dimBlock>>>(A, value, C);
+		internal::addval<float> <<<dimGrid, dimBlock>>>(A, (float)value, C);
 		break;
 	}
 }
@@ -707,7 +690,7 @@ void cuda_addval(const GpuMat& A, const GpuVal& value, GpuMat& C)
  * @param C - out C = A - value
  */
 extern "C"
-void cuda_subval_Aval(const GpuMat& A, const GpuVal& value, GpuMat& C)
+void cuda_subval_Aval(const GpuMat& A, double value, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -716,10 +699,10 @@ void cuda_subval_Aval(const GpuMat& A, const GpuVal& value, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::subval<double> <<<dimGrid, dimBlock>>>(A, value, C);
+		internal::subval<double> <<<dimGrid, dimBlock>>>(A, (double)value, C);
 		break;
 	case GPU_FLOAT:
-		internal::subval<float> <<<dimGrid, dimBlock>>>(A, value, C);
+		internal::subval<float> <<<dimGrid, dimBlock>>>(A, (float)value, C);
 		break;
 	}
 }
@@ -731,7 +714,7 @@ void cuda_subval_Aval(const GpuMat& A, const GpuVal& value, GpuMat& C)
  * @param C - out C = value - C
  */
 extern "C"
-void cuda_subval_valA(const GpuVal& value, const GpuMat& A, GpuMat& C)
+void cuda_subval_valA(double value, const GpuMat& A, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -740,10 +723,10 @@ void cuda_subval_valA(const GpuVal& value, const GpuMat& A, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::subval<double> <<<dimGrid, dimBlock>>>(value, A, C);
+		internal::subval<double> <<<dimGrid, dimBlock>>>((double)value, A, C);
 		break;
 	case GPU_FLOAT:
-		internal::subval<float> <<<dimGrid, dimBlock>>>(value, A, C);
+		internal::subval<float> <<<dimGrid, dimBlock>>>((float)value, A, C);
 		break;
 	}
 }

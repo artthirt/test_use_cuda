@@ -127,28 +127,28 @@ void matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
  * @param value - mat 1x1
  * @param C - out C = A * value
  */
-void mulval(const GpuMat& A, const GpuVal& value, GpuMat& C);
+void mulval(const GpuMat& A, double value, GpuMat& C);
 /**
  * @brief addval
  * @param A
  * @param value - mat 1x1
  * @param C - out C = A + value
  */
-void addval(const GpuMat& A, const GpuVal& value, GpuMat& C);
+void addval(const GpuMat& A, double value, GpuMat& C);
 /**
  * @brief subval
  * @param A
  * @param value - mat 1x1
  * @param C - out C = A - value
  */
-void subval(const GpuMat& A, const GpuVal& value, GpuMat& C);
+void subval(const GpuMat& A, double value, GpuMat& C);
 /**
  * @brief subval
  * @param A
  * @param value - mat 1x1
  * @param C - out C = value - C
  */
-void subval(const GpuVal& value, const GpuMat& A, GpuMat& C);
+void subval(double value, const GpuMat& A, GpuMat& C);
 /**
  * @brief biasPlus
  * @param A - out A[i] = A[i] + bias
