@@ -80,26 +80,33 @@ void add(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief add
  * @param A
- * @param val1
  * @param B
- * @param val2
  * @param C
+ * @param valA
+ * @param valB
  */
-void add(const GpuMat& A, double val1, const GpuMat& B, double val2, GpuMat& C);
+void add(const GpuMat& A, const GpuMat& B, GpuMat& C, double valA = 1., double valB = 1.);
 /**
  * @brief add
- * @param A
- * @param val
+ * @param A -> A = valA * A + valB * B
+ * @param valA
  * @param B
+ * @param valB
  */
-void add(GpuMat& A, double val, const GpuMat& B);
+void add(GpuMat& A, const GpuMat& B, double valA = 1., double valB = 1.);
 /**
  * @brief sub
  * @param A
  * @param B
  * @param C - out C = A .- B
  */
-void sub(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void sub(const GpuMat& A, const GpuMat& B, GpuMat& C, double valA = 1., double valB = 1.);
+/**
+ * @brief sub
+ * @param A = A * valA - B * valB
+ * @param B
+ */
+void sub(GpuMat& A, const GpuMat& B, double valA = 1., double valB = 1.);
 /**
  * @brief matmul
  * @param A
@@ -200,6 +207,13 @@ void elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
  * @param C - out C = sqrt(A)
  */
 void elemiseSqrt(const GpuMat& A, GpuMat& C);
+/**
+ * @brief elemiseSqr
+ * @param A
+ * @param B
+ * @param C - out C = sqrt(A)
+ */
+void elemiseSqr(const GpuMat& A, GpuMat& C);
 /**
  * @brief sumRows
  * @param A

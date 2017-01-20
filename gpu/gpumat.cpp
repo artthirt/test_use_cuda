@@ -249,7 +249,7 @@ void cuda_add(const GpuMat& A, const GpuMat& B, GpuMat& C);
  * @param C = val1 * A + val2 * B
  */
 extern "C"
-void cuda_add_params(const GpuMat& A, double val1, const GpuMat& B, double val2, GpuMat& C);
+void cuda_add_params(const GpuMat& A, const GpuMat& B, double val1, double val2, GpuMat& C);
 
 /**
  * @brief cuda_add_paramsA
@@ -258,7 +258,7 @@ void cuda_add_params(const GpuMat& A, double val1, const GpuMat& B, double val2,
  * @param B
  */
 extern "C"
-void cuda_add_paramsA(GpuMat& A, double val, const GpuMat& B);
+void cuda_add_paramsA(GpuMat& A, const GpuMat& B, double val1, double val2);
 
 /**
  * @brief sub
@@ -267,7 +267,17 @@ void cuda_add_paramsA(GpuMat& A, double val, const GpuMat& B);
  * @param C - out C = A .- B
  */
 extern "C"
-void cuda_sub(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void cuda_sub(const GpuMat& A, const GpuMat& B, GpuMat& C, double valA, double valB);
+
+/**
+ * @brief cuda_subA
+ * @param A = A * valA - B * valB
+ * @param B
+ * @param valA
+ * @param valB
+ */
+extern "C"
+void cuda_subA(GpuMat& A, const GpuMat& B, double valA, double valB);
 
 /**
  * @brief matmul
@@ -401,6 +411,14 @@ extern "C"
 void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C);
 
 /**
+ * @brief elemiseSqr
+ * @param A
+ * @param C - out C = A .* A
+ */
+extern "C"
+void cuda_elemiseSqr(const GpuMat& A, GpuMat& C);
+
+/**
  * @brief cuda_sumrows
  * @param A
  * @param C - out C[i] = val * sum(A[i, j])(j = [1..cols])
@@ -470,7 +488,7 @@ void add(const GpuMat &A, const GpuMat &B, GpuMat &C)
 }
 
 
-void add(const GpuMat &A, double val1, const GpuMat &B, double val2, GpuMat &C)
+void add(const GpuMat &A, const GpuMat &B, GpuMat &C, double valA, double valB)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
@@ -478,18 +496,18 @@ void add(const GpuMat &A, double val1, const GpuMat &B, double val2, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_add_params(A, val1, B, val2, C);
+	cuda_add_params(A, B, valA, valB, C);
 }
 
-void add(GpuMat &A, double val, const GpuMat &B)
+void add(GpuMat &A, const GpuMat &B, double valA, double valB)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
 
-	cuda_add_paramsA(A, val, B);
+	cuda_add_paramsA(A, B, valA, valB);
 }
 
-void sub(const GpuMat &A, const GpuMat &B, GpuMat &C)
+void sub(const GpuMat &A, const GpuMat &B, GpuMat &C, double valA, double valB)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
@@ -497,7 +515,16 @@ void sub(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_sub(A, B, C);
+	cuda_sub(A, B, C, valA, valB);
+}
+
+
+void sub(GpuMat &A, const GpuMat &B, double valA, double valB)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	cuda_subA(A, B, valA, valB);
 }
 
 void matmul(const GpuMat &A, const GpuMat &B, GpuMat &C)
@@ -638,6 +665,17 @@ void elemiseSqrt(const GpuMat &A, GpuMat &C)
 		C.resize(A);
 
 	cuda_elemiseSqrt(A, C);
+}
+
+void elemiseSqr(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty())
+		return;
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_elemiseSqr(A, C);
 }
 
 void reLu(const GpuMat &A, GpuMat &C)

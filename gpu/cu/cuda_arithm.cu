@@ -75,10 +75,10 @@ __global__ void add(Mtx A, Mtx B, Mtx C)
  * @brief add
  * @param A
  * @param B
- * @param C - out C = A .+ B
+ * @param C - out C = val1 * A .+ val2 * B
  */
 template< class T >
-__global__ void add(Mtx A, T val1, Mtx B, T val2, Mtx C)
+__global__ void add(Mtx A, Mtx B, T valA, T valB, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -88,7 +88,7 @@ __global__ void add(Mtx A, T val1, Mtx B, T val2, Mtx C)
 	T* dC = (T*)C.data;
 
 	if(row < A.rows && col < A.cols)
-		dC[row * A.cols + col] = val1 * dA[row * A.cols + col] + val2 * dB[row * B.cols + col];
+		dC[row * A.cols + col] = valA * dA[row * A.cols + col] + valB * dB[row * B.cols + col];
 }
 
 /**
@@ -98,7 +98,7 @@ __global__ void add(Mtx A, T val1, Mtx B, T val2, Mtx C)
  * @param C - out C = A .+ B
  */
 template< class T >
-__global__ void add(Mtx A, T val, Mtx B)
+__global__ void add(Mtx A, Mtx B, T valA, T valB)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -107,17 +107,18 @@ __global__ void add(Mtx A, T val, Mtx B)
 	T* dB = (T*)B.data;
 
 	if(row < A.rows && col < A.cols)
-		dA[row * A.cols + col] += val * dB[row * B.cols + col];
+		dA[row * A.cols + col] = valA * dA[row * A.cols + col] + valB * dB[row * B.cols + col];
 }
 
 /**
  * @brief sub
  * @param A
  * @param B
- * @param C - out C = A .- B
- */
-template< class T >
-__global__ void sub(Mtx A, Mtx B, Mtx C)
+ * @param C -> C = valA * A - valB * B
+ * @param valA
+ * @param valB
+ */template< class T >
+__global__ void sub(Mtx A, Mtx B, Mtx C, T valA, T valB)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -127,8 +128,22 @@ __global__ void sub(Mtx A, Mtx B, Mtx C)
 	T* dC = (T*)C.data;
 
 	if(row < A.rows && col < A.cols)
-		dC[row * C.cols + col] = dA[row * A.cols + col] - dB[row * B.cols + col];
+		dC[row * C.cols + col] = valA * dA[row * A.cols + col] - valB * dB[row * B.cols + col];
 }
+
+template< class T >
+__global__ void sub(Mtx A, Mtx B, T valA, T valB)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dB = (T*)B.data;
+
+	if(row < A.rows && col < A.cols)
+		dA[row * A.cols + col] = valA * dA[row * A.cols + col] - valB * dB[row * B.cols + col];
+}
+
 
 /**
  * @brief matmul
@@ -437,7 +452,7 @@ __global__ void transpose(Mtx A, Mtx C)
 /**
  * @brief sqrt
  * @param A
- * @param C = A'
+ * @param C = sqrt(A)
  */
 template< class T >
 __global__ void sqrt(Mtx A, Mtx C)
@@ -450,6 +465,26 @@ __global__ void sqrt(Mtx A, Mtx C)
 
 	if(row < A.rows && col < A.cols)
 		dC[row * C.cols + col] = std::sqrt(dA[row * A.cols + col]);
+}
+
+/**
+ * @brief sqr
+ * @param A
+ * @param C = A .* a
+ */
+template< class T >
+__global__ void sqr(Mtx A, Mtx C)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dC = (T*)C.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = dA[row * A.cols + col];
+		dC[row * C.cols + col] = val * val;
+	}
 }
 
 /**
@@ -612,10 +647,10 @@ void cuda_memset(GpuMat& A, double val)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::memset<double> <<<dimGrid, dimBlock>>>(A, val);
+		internal::memset<double> <<<dimGrid, dimBlock>>>(A, (double)val);
 		break;
 	case GPU_FLOAT:
-		internal::memset<float> <<<dimGrid, dimBlock>>>(A, val);
+		internal::memset<float> <<<dimGrid, dimBlock>>>(A, (float)val);
 		break;
 	}
 }
@@ -653,7 +688,7 @@ void cuda_add(const GpuMat& A, const GpuMat& B, GpuMat& C)
  * @param C = val1 * A + val2 * B
  */
 extern "C"
-void cuda_add_params(const GpuMat& A, double val1, const GpuMat& B, double val2, GpuMat& C)
+void cuda_add_params(const GpuMat& A, const GpuMat& B, double val1, double val2, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -662,22 +697,22 @@ void cuda_add_params(const GpuMat& A, double val1, const GpuMat& B, double val2,
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::add<double> <<<dimGrid, dimBlock>>>(A, (double)val1, B, (double)val2, C);
+		internal::add<double> <<<dimGrid, dimBlock>>>(A, B, (double)val1, (double)val2, C);
 		break;
 	case GPU_FLOAT:
-		internal::add<float> <<<dimGrid, dimBlock>>>(A, (float)val1, B, (float)val2, C);
+		internal::add<float> <<<dimGrid, dimBlock>>>(A, B, (float)val1, (float)val2, C);
 		break;
 	}
 }
 
 /**
  * @brief cuda_add_paramsA
- * @param A -> A += val1 * B
+ * @param A -> A = val1 * A + val2 * B
  * @param val
  * @param B
  */
 extern "C"
-void cuda_add_paramsA(GpuMat& A, double val, const GpuMat& B)
+void cuda_add_paramsA(GpuMat& A, const GpuMat& B, double valA, double valB)
 {
 	int x1 = B.cols / BLOCKSIZE + 1;
 	int x2 = B.rows / BLOCKSIZE + 1;
@@ -686,10 +721,10 @@ void cuda_add_paramsA(GpuMat& A, double val, const GpuMat& B)
 
 	switch (B.type) {
 	case GPU_DOUBLE:
-		internal::add<double> <<<dimGrid, dimBlock>>>(B, (double)val, B);
+		internal::add<double> <<<dimGrid, dimBlock>>>(A, B, (double)valA, (double)valB);
 		break;
 	case GPU_FLOAT:
-		internal::add<float> <<<dimGrid, dimBlock>>>(B, (float)val, B);
+		internal::add<float> <<<dimGrid, dimBlock>>>(A, B, (float)valA, (float)valB);
 		break;
 	}
 }
@@ -701,7 +736,7 @@ void cuda_add_paramsA(GpuMat& A, double val, const GpuMat& B)
  * @param C - out C = A .- B
  */
 extern "C"
-void cuda_sub(const GpuMat& A, const GpuMat& B, GpuMat& C)
+void cuda_sub(const GpuMat& A, const GpuMat& B, GpuMat& C, double valA, double valB)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -710,10 +745,35 @@ void cuda_sub(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::sub<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::sub<double> <<<dimGrid, dimBlock>>>(A, B, C, (double)valA, (double)valB);
 		break;
 	case GPU_FLOAT:
-		internal::sub<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::sub<float> <<<dimGrid, dimBlock>>>(A, B, C, (float)valA, (float)valB);
+		break;
+	}
+}
+
+/**
+ * @brief cuda_subA
+ * @param A = A * valA - B * valB
+ * @param B
+ * @param valA
+ * @param valB
+ */
+extern "C"
+void cuda_subA(GpuMat& A, const GpuMat& B, double valA, double valB)
+{
+	int x1 = A.cols / BLOCKSIZE + 1;
+	int x2 = A.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::sub<double> <<<dimGrid, dimBlock>>>(A, B, (double)valA, (double)valB);
+		break;
+	case GPU_FLOAT:
+		internal::sub<float> <<<dimGrid, dimBlock>>>(A, B, (float)valA, (float)valB);
 		break;
 	}
 }
@@ -854,10 +914,10 @@ void cuda_mulval_in(GpuMat& A, const double value)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::mulval<double> <<<dimGrid, dimBlock>>>(A, value);
+		internal::mulval<double> <<<dimGrid, dimBlock>>>(A, (double)value);
 		break;
 	case GPU_FLOAT:
-		internal::mulval<float> <<<dimGrid, dimBlock>>>(A, value);
+		internal::mulval<float> <<<dimGrid, dimBlock>>>(A, (float)value);
 		break;
 	}
 }
@@ -1100,7 +1160,7 @@ void cuda_transpose(const GpuMat& A, GpuMat& C)
 /**
  * @brief cuda_elemiseSqrt
  * @param A
- * @param C = A'
+ * @param C = sqrt(A)
  */
 extern "C"
 void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C)
@@ -1121,6 +1181,29 @@ void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C)
 }
 
 /**
+ * @brief cuda_elemiseSqr
+ * @param A
+ * @param C =  A .* a
+ */
+extern "C"
+void cuda_elemiseSqr(const GpuMat& A, GpuMat& C)
+{
+	int x1 = A.cols / BLOCKSIZE + 1;
+	int x2 = A.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::sqr<double> <<<dimGrid, dimBlock>>>(A, C);
+		break;
+	case GPU_FLOAT:
+		internal::sqr<float> <<<dimGrid, dimBlock>>>(A, C);
+		break;
+	}
+}
+
+/**
  * @brief cuda_sumrows
  * @param A
  * @param C - out C[i] = sum(A[i, j])(j = [1..cols])
@@ -1132,10 +1215,10 @@ void cuda_sumrows(const GpuMat& A, GpuMat& C, double val)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-			internal::sum_row<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, C, val);
+			internal::sum_row<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, C, (double)val);
 		break;
 	case GPU_FLOAT:
-			internal::sum_row<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, C, val);
+			internal::sum_row<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, C, (float)val);
 		break;
 	}
 }

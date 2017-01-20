@@ -97,7 +97,7 @@ void test_cuda()
 	PRINT_MAT(gA, "A");
 	PRINT_MAT(gB, "B");
 	PRINT_MAT(gC, "C");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::add(gA, gC, R), "A + C");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::add(gA, gC, R, 1, 1), "A + C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sub(gA, gC, R), "A - C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::addval(gA, gv1, R), "A + 3");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::subval(gA, gv1, R), "A - 3");
