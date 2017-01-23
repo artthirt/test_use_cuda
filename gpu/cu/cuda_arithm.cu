@@ -10,6 +10,8 @@ using namespace gpumat;
 
 namespace internal{
 
+////////////////////////////////
+
 struct Mtx{
 	int rows;
 	int cols;
@@ -31,7 +33,7 @@ struct Mtx{
 	}
 };
 
-#define BLOCKSIZE	16
+#define BLOCKSIZE	32
 
 /**
  * @brief memset
@@ -218,8 +220,8 @@ __global__ void matmulT2(Mtx A, Mtx Bt, Mtx C)
 	float sC = 0;
 
 //	s += val1[i * A.cols + j]/*at(i, j)*/ * val2[k * Bt.cols + j]/*at(j, k)*/;
-	if(row < A.rows && col < Bt.rows){
-		for(int i = 0; i < Bt.cols; i++){
+	if(row < A.rows && col < C.cols){
+		for(int i = 0; i < A.cols; i++){
 //			sC += DA[row * B.rows + i] * DB[i * B.cols + col];
 			sC += DA[row * A.cols + i] * DB[col * Bt.cols + i];
 		}
@@ -392,13 +394,13 @@ __global__ void biasPlus(Mtx A, const Mtx bias)
 }
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  * @param C - out C = A .* B
  */
 template< class T >
-__global__ void elemiseMul(Mtx A, Mtx B, Mtx C)
+__global__ void elemwiseMul(Mtx A, Mtx B, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -412,13 +414,31 @@ __global__ void elemiseMul(Mtx A, Mtx B, Mtx C)
 }
 
 /**
- * @brief elemiseDiv
+ * @brief elemwiseMul
+ * @param A
+ * @param B
+ */
+template< class T >
+__global__ void elemwiseMul(Mtx A, Mtx B)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dB = (T*)B.data;
+
+	if(row < A.rows && col < A.cols)
+		dA[row * A.cols + col] *= dB[row * A.cols + col];
+}
+
+/**
+ * @brief elemwiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
 template< class T >
-__global__ void elemiseDiv(Mtx A, Mtx B, Mtx C)
+__global__ void elemwiseDiv(Mtx A, Mtx B, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -550,7 +570,7 @@ __global__ void _exp(Mtx A, Mtx C)
  * @param rows = sum(C)
  */
 template< class T >
-__global__ void sum_col(Mtx C, Mtx cols)
+__global__ void sum_rows(Mtx C, Mtx cols, T val = (T)1.)
 {
 	//int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -559,9 +579,11 @@ __global__ void sum_col(Mtx C, Mtx cols)
 	T* dZ = (T*)cols.data;
 
 	if(col < C.cols){
+		dZ[col] = 0;
 		for(int i = 0; i < C.rows; i++){
 			dZ[col] += dC[i * C.cols + col];
 		}
+		dZ[col] *= val;
 	}
 }
 /**
@@ -571,7 +593,7 @@ __global__ void sum_col(Mtx C, Mtx cols)
  * @param rows = sum(C)
  */
 template< class T >
-__global__ void sum_row(Mtx C, Mtx rows, T val = (T)1.)
+__global__ void sum_cols(Mtx C, Mtx rows, T val = (T)1.)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	//int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -580,6 +602,7 @@ __global__ void sum_row(Mtx C, Mtx rows, T val = (T)1.)
 	T* dZ = (T*)rows.data;
 
 	if(row < C.rows){
+		dZ[row] = 0;
 		for(int i = 0; i < C.cols; i++){
 			dZ[row] += dC[row * C.cols + i];
 		}
@@ -621,7 +644,38 @@ __global__ void div_row(Mtx C, Mtx rows)
 	T* dZ = (T*)rows.data;
 
 	if(row < C.rows && col < C.cols){
-		dC[row * C.cols + col] = dC[row * C.cols + col] / dZ[row];
+		if(dZ[row] != 0)
+			dC[row * C.cols + col] = dC[row * C.cols + col] / dZ[row];
+		else
+			dC[row * C.cols + col] = 0;
+	}
+}
+
+/**
+ * @brief cuda_adamgrad
+ * @param A = -alpha * (sb1 * mA / (sqrt(sb2 * vA) + eps)
+ * @param mA
+ * @param vA
+ * @param alpha
+ * @param sb1
+ * @param sb2
+ */
+template< class T >
+__global__ void adamgrad(Mtx A, const Mtx mA, const Mtx vA, T alpha, T sb1, T sb2)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	const T eps = 10e-8;
+
+	T* dA = (T*)A.data;
+	T* dmA = (T*)mA.data;
+	T* dvA = (T*)vA.data;
+	if(row < A.rows && col < A.cols){
+		T m = sb1 * dmA[row * A.cols + col];
+		T v = sb2 * dvA[row * A.cols + col];
+		T val = alpha * m / (::sqrt(v) + eps);
+		dA[row * A.cols + col] -= val;
 	}
 }
 
@@ -787,8 +841,8 @@ void cuda_subA(GpuMat& A, const GpuMat& B, double valA, double valB)
 extern "C"
 void cuda_matmul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
-	int x1 = A.cols / BLOCKSIZE + 1;
-	int x2 = A.rows / BLOCKSIZE + 1;
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -814,8 +868,8 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 	//	int r = At.cols;
 	//	int c = B.cols;
 
-	int x1 = B.cols / BLOCKSIZE + 1;
-	int x2 = At.cols / BLOCKSIZE + 1;
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -838,8 +892,8 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 extern "C"
 void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
 {
-	int x1 = Bt.rows / BLOCKSIZE + 1;
-	int x2 = A.rows / BLOCKSIZE + 1;
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -1087,13 +1141,13 @@ void cuda_biasPlus(GpuMat& A, const GpuMat& bias)
 }
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  * @param C - out C = A .* B
  */
 extern "C"
-void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
+void cuda_elemwiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1102,22 +1156,21 @@ void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::elemiseMul<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseMul<double> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	case GPU_FLOAT:
-		internal::elemiseMul<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseMul<float> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	}
 }
 
 /**
- * @brief elemiseDiv
- * @param A
+ * @brief elemwiseMul
+ * @param A = A .* B
  * @param B
- * @param C - out C = A ./ B
  */
 extern "C"
-void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C)
+void cuda_elemwiseMulA(GpuMat& A, const GpuMat& B)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1126,10 +1179,35 @@ void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::elemiseDiv<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseMul<double> <<<dimGrid, dimBlock>>>(A, B);
 		break;
 	case GPU_FLOAT:
-		internal::elemiseDiv<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseMul<float> <<<dimGrid, dimBlock>>>(A, B);
+		break;
+	}
+}
+
+
+/**
+ * @brief elemwiseDiv
+ * @param A
+ * @param B
+ * @param C - out C = A ./ B
+ */
+extern "C"
+void cuda_elemwiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C)
+{
+	int x1 = A.cols / BLOCKSIZE + 1;
+	int x2 = A.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::elemwiseDiv<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::elemwiseDiv<float> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	}
 }
@@ -1158,12 +1236,12 @@ void cuda_transpose(const GpuMat& A, GpuMat& C)
 }
 
 /**
- * @brief cuda_elemiseSqrt
+ * @brief cuda_elemwiseSqrt
  * @param A
  * @param C = sqrt(A)
  */
 extern "C"
-void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C)
+void cuda_elemwiseSqrt(const GpuMat& A, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1181,12 +1259,12 @@ void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C)
 }
 
 /**
- * @brief cuda_elemiseSqr
+ * @brief cuda_elemwiseSqr
  * @param A
  * @param C =  A .* a
  */
 extern "C"
-void cuda_elemiseSqr(const GpuMat& A, GpuMat& C)
+void cuda_elemwiseSqr(const GpuMat& A, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1209,16 +1287,17 @@ void cuda_elemiseSqr(const GpuMat& A, GpuMat& C)
  * @param C - out C[i] = sum(A[i, j])(j = [1..cols])
  */
 extern "C"
-void cuda_sumrows(const GpuMat& A, GpuMat& C, double val)
+void cuda_sumrows(const GpuMat& A, GpuMat& sums, double val)
 {
-	int x2 = A.rows / BLOCKSIZE + 1;
+	int x1 = A.cols / BLOCKSIZE + 1;
+//	int x2 = A.rows / BLOCKSIZE + 1;
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-			internal::sum_row<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, C, (double)val);
+			internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (double)val);
 		break;
 	case GPU_FLOAT:
-			internal::sum_row<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, C, (float)val);
+			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (float)val);
 		break;
 	}
 }
@@ -1288,7 +1367,7 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 		internal::_exp<double> <<<dimGrid, dimBlock>>>(A, C);
 		break;
 	case GPU_FLOAT:
-		internal::_exp<double> <<<dimGrid, dimBlock>>>(A, C);
+		internal::_exp<float> <<<dimGrid, dimBlock>>>(A, C);
 		break;
 	}
 
@@ -1297,11 +1376,11 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 			{
 				switch (A.type) {
 				case GPU_DOUBLE:
-						internal::sum_col<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+						internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
 						internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				case GPU_FLOAT:
-						internal::sum_col<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+						internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
 						internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				}
@@ -1311,15 +1390,42 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 			{
 				switch (A.type) {
 				case GPU_DOUBLE:
-						internal::sum_row<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+						internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
 						internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				case GPU_FLOAT:
-						internal::sum_row<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+						internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
 						internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				}
 			}
 			break;
+	}
+}
+
+/**
+ * @brief cuda_adamgrad
+ * @param A = -alpha * (sb1 * mA / (sqrt(sb2 * vA) + eps)
+ * @param mA
+ * @param vA
+ * @param alpha
+ * @param sb1
+ * @param sb2
+ */
+extern "C"
+void cuda_adamgrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, double sb1, double sb2)
+{
+	int x1 = A.cols / BLOCKSIZE + 1;
+	int x2 = A.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::adamgrad<double> <<<dimGrid, dimBlock>>>(A, mA, vA, (double)alpha, (double)sb1, (double)sb2);
+		break;
+	case GPU_FLOAT:
+		internal::adamgrad<float> <<<dimGrid, dimBlock>>>(A, mA, vA, (float)alpha, (float)sb1, (float)sb2);
+		break;
 	}
 }

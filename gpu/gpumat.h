@@ -27,7 +27,7 @@ public:
 	int type;
 	int rows;
 	int cols;
-	u_char* data;
+	uint8_t* data;
 
 	GpuMat();
 	GpuMat(int rows, int cols, int type);
@@ -52,12 +52,18 @@ public:
 	void resize(int rows, int cols, int type);
 	void resize(const GpuMat& mat);
 
+	void copyTo(GpuMat& mat);
+
 	void setData(void* data);
-	void getData(void* data);
+	void getData(void *data) const;
 
 	void swap_dims();
 
 	std::string operator()() const;
+
+	std::string print(int _rows = -1) const;
+
+	void save(const std::string filename) const;
 
 	void release();
 
@@ -192,28 +198,34 @@ void biasPlus(GpuMat& A, const GpuMat& bias);
  * @param B
  * @param C - out C = A .* B
  */
-void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void elemwiseMult(const GpuMat& A, const GpuMat& B, GpuMat& C);
+/**
+ * @brief elemiseMul
+ * @param A = A.* B
+ * @param B
+ */
+void elemwiseMult(GpuMat& A, const GpuMat& B);
 /**
  * @brief elemiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
-void elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void elemwiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief elemiseSqrt
  * @param A
  * @param B
  * @param C - out C = sqrt(A)
  */
-void elemiseSqrt(const GpuMat& A, GpuMat& C);
+void elemwiseSqrt(const GpuMat& A, GpuMat& C);
 /**
  * @brief elemiseSqr
  * @param A
  * @param B
  * @param C - out C = sqrt(A)
  */
-void elemiseSqr(const GpuMat& A, GpuMat& C);
+void elemwiseSqr(const GpuMat& A, GpuMat& C);
 /**
  * @brief sumRows
  * @param A
@@ -248,6 +260,13 @@ void deriv_reLu(const GpuMat& A, GpuMat& C);
  * @param partZ = sum(exp(A), axis)
  */
 void softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
+/**
+ * @brief sub
+ * @param A
+ * @param B
+ * @param C - out C = A .- B
+ */
+void sub_adamGrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, double sb1, double sb2);
 
 }
 

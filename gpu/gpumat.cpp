@@ -1,8 +1,10 @@
 #include "gpumat.h"
 
 #include <sstream>
+#include <fstream>
 
 #include <cuda_runtime.h>
+#include <assert.h>
 
 using namespace gpumat;
 
@@ -24,6 +26,7 @@ GpuMat::GpuMat(int rows, int cols, int type)
 		int size = rows * cols * depth();
 
 		cudaError_t err = cudaMalloc(&data, size);
+		assert(err == cudaSuccess);
 	}
 }
 
@@ -38,9 +41,10 @@ GpuMat::GpuMat(int rows, int cols, int type, void *data)
 
 		cudaError_t err = cudaMalloc(&this->data, size);
 
-		if(data){
-			cudaMemcpy(this->data, data, size, cudaMemcpyHostToDevice);
+		if(data && this->data){
+			err = cudaMemcpy(this->data, data, size, cudaMemcpyHostToDevice);
 		}
+		assert(err == cudaSuccess);
 	}
 }
 
@@ -52,7 +56,9 @@ GpuMat::GpuMat(const GpuMat &mat)
 
 	if(mat.data){
 		cudaError_t err = cudaMalloc((void**)&data, mat.size());
-		err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
+		if(data && mat.data)
+			err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
+		assert(err == cudaSuccess);
 	}
 }
 
@@ -75,10 +81,12 @@ GpuMat &GpuMat::operator =(const GpuMat &mat)
 		type = mat.type;
 
 		err = cudaMalloc(&data, mat.size());
+		assert(err == cudaSuccess);
 	}
 
 	if(mat.data && err == cudaSuccess ){
 		err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
+		assert(err == cudaSuccess);
 	}
 	return *this;
 }
@@ -95,7 +103,8 @@ GpuMat &GpuMat::ones()
 GpuMat &GpuMat::zeros()
 {
 	if(data){
-		cudaMemset(data, 0, size());
+		cudaError_t err = cudaMemset(data, 0, size());
+		assert(err == cudaSuccess);
 	}
 	return *this;
 }
@@ -134,6 +143,7 @@ void GpuMat::resize(int rows, int cols, int type)
 	this->type = type;
 
 	cudaError_t err = cudaMalloc(&data, size());
+	assert(err == cudaSuccess);
 }
 
 void GpuMat::resize(const GpuMat &mat)
@@ -145,6 +155,15 @@ void GpuMat::resize(const GpuMat &mat)
 	this->type = mat.type;
 
 	cudaError_t err = cudaMalloc(&data, size());
+	assert(err == cudaSuccess);
+}
+
+void GpuMat::copyTo(GpuMat &mat)
+{
+	if(empty())
+		return;
+
+	mat = *this;
 }
 
 void GpuMat::setData(void *data)
@@ -152,15 +171,17 @@ void GpuMat::setData(void *data)
 	if(!data || !this->data || !rows || !cols)
 		return;
 
-	cudaMemcpy(this->data, data, size(), cudaMemcpyHostToDevice);
+	cudaError_t err = cudaMemcpy(this->data, data, size(), cudaMemcpyHostToDevice);
+	assert(err == cudaSuccess);
 }
 
-void GpuMat::getData(void *data)
+void GpuMat::getData(void *data) const
 {
 	if(!this->data || !data || !rows || !cols)
 		return;
 
-	cudaMemcpy(data, this->data, size(), cudaMemcpyDeviceToHost);
+	cudaError_t err = cudaMemcpy(data, this->data, size(), cudaMemcpyDeviceToHost);
+	assert(err == cudaSuccess);
 }
 
 void GpuMat::swap_dims()
@@ -180,7 +201,8 @@ std::string getString(void* data, int rows, int cols)
 
 	int size = rows * cols * sizeof(T);
 
-	cudaMemcpy(&vec[0], data, size, cudaMemcpyDeviceToHost);
+	cudaError_t err = cudaMemcpy(&vec[0], data, size, cudaMemcpyDeviceToHost);
+	assert(err == cudaSuccess);
 
 	std::stringstream stream;
 
@@ -211,11 +233,50 @@ std::string GpuMat::operator()() const
 	return "";
 }
 
+std::string GpuMat::print(int _rows) const
+{
+	if(!data)
+		return "";
+
+	if(_rows < 0)
+		_rows = rows;
+	if(_rows > rows)
+		_rows = rows;
+
+	std::string res;
+	switch (type) {
+		case GPU_FLOAT:
+			res = getString<float>(data, _rows, cols);
+		break;
+		case GPU_DOUBLE:
+			res = getString<double>(data, _rows, cols);
+		break;
+	}
+
+//	std::fstream fs;
+//	fs.open("temp.txt", std::ios_base::out);
+//	fs.write(res.c_str(), res.size());
+//	fs.close();
+
+	return res;
+}
+
+void GpuMat::save(const std::string filename) const
+{
+	std::string res = (*this)();
+
+	std::fstream fs;
+	fs.open(filename.c_str(), std::ios_base::out);
+	fs.write(res.c_str(), res.size());
+	fs.close();
+}
+
 void GpuMat::release()
 {
 	rows = cols = type = 0;
 	if(data){
-		cudaFree(data);
+		cudaError_t err = cudaFree(data);
+		assert(err == cudaSuccess);
 		data = 0;
 	}
 }
@@ -385,38 +446,46 @@ extern "C"
 void cuda_biasPlus(GpuMat& A, const GpuMat& bias);
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  * @param C - out C = A .* B
  */
 extern "C"
-void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void cuda_elemwiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
- * @brief elemiseDiv
+ * @brief elemwiseMul
+ * @param A = A .* B
+ * @param B
+ */
+extern "C"
+void cuda_elemwiseMulA(GpuMat& A, const GpuMat& B);
+
+/**
+ * @brief elemwiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
 extern "C"
-void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void cuda_elemwiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
- * @brief elemiseSqrt
+ * @brief elemwiseSqrt
  * @param A
  * @param C - out C = sqrt(A)
  */
 extern "C"
-void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C);
+void cuda_elemwiseSqrt(const GpuMat& A, GpuMat& C);
 
 /**
- * @brief elemiseSqr
+ * @brief elemwiseSqr
  * @param A
  * @param C - out C = A .* A
  */
 extern "C"
-void cuda_elemiseSqr(const GpuMat& A, GpuMat& C);
+void cuda_elemwiseSqr(const GpuMat& A, GpuMat& C);
 
 /**
  * @brief cuda_sumrows
@@ -458,6 +527,18 @@ void cuda_derivReLu(const GpuMat& A, GpuMat& C);
  */
 extern "C"
 void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
+
+/**
+ * @brief cuda_adamgrad
+ * @param A = -alpha * (sb1 * mA / (sqrt(sb2 * vA) + eps)
+ * @param mA
+ * @param vA
+ * @param alpha
+ * @param sb1
+ * @param sb2
+ */
+extern "C"
+void cuda_adamgrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, double sb1, double sb2);
 
 /////////////////////////////////////////////////
 
@@ -621,7 +702,7 @@ void biasPlus(GpuMat &A, const GpuMat &bias)
 	cuda_biasPlus(A, bias);
 }
 
-void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
+void elemwiseMult(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
@@ -629,10 +710,19 @@ void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseMul(A, B, C);
+	cuda_elemwiseMul(A, B, C);
 }
 
-void elemiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
+
+void elemwiseMult(GpuMat &A, const GpuMat &B)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	cuda_elemwiseMulA(A, B);
+}
+
+void elemwiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
@@ -640,7 +730,7 @@ void elemiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseDiv(A, B, C);
+	cuda_elemwiseDiv(A, B, C);
 }
 
 
@@ -656,7 +746,7 @@ void transpose(const GpuMat &A, GpuMat &C)
 
 }
 
-void elemiseSqrt(const GpuMat &A, GpuMat &C)
+void elemwiseSqrt(const GpuMat &A, GpuMat &C)
 {
 	if(A.empty())
 		return;
@@ -664,10 +754,10 @@ void elemiseSqrt(const GpuMat &A, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseSqrt(A, C);
+	cuda_elemwiseSqrt(A, C);
 }
 
-void elemiseSqr(const GpuMat &A, GpuMat &C)
+void elemwiseSqr(const GpuMat &A, GpuMat &C)
 {
 	if(A.empty())
 		return;
@@ -675,7 +765,7 @@ void elemiseSqr(const GpuMat &A, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseSqr(A, C);
+	cuda_elemwiseSqr(A, C);
 }
 
 void reLu(const GpuMat &A, GpuMat &C)
@@ -714,12 +804,10 @@ void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)
 		}
 	}
 	if(axis == 1){
-		if(axis == 1 || partZ.rows != A.rows || partZ.cols != 1){
+		if(partZ.rows != A.rows || partZ.cols != 1){
 			partZ.resize(A.rows, 1, A.type);
 		}
 	}
-	partZ.zeros();
-
 	cuda_softmax(A, axis, C, partZ);
 }
 
@@ -729,10 +817,21 @@ void sumRows(const GpuMat &A, GpuMat &C, double val)
 		return;
 
 	if(A.rows != C.rows || C.cols != 1 || A.type != C.type){
-		C.resize(A.rows, 1, A.type);
+		C.resize(1, A.cols, A.type);
 	}
 
 	cuda_sumrows(A, C, val);
+}
+
+void sub_adamGrad(GpuMat &A, const GpuMat &mA, const GpuMat &vA, double alpha, double sb1, double sb2)
+{
+	if(A.empty() || mA.empty() || vA.empty() ||
+			A.type != mA.type || A.type != vA.type ||
+			A.rows != mA.rows || A.cols != mA.cols ||
+			A.rows != vA.rows || A.cols != vA.cols)
+		return;
+
+	cuda_adamgrad(A, mA, vA, alpha, sb1, sb2);
 }
 
 }
