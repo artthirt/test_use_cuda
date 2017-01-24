@@ -93,11 +93,11 @@ void test_cuda()
 	ct::Matd A(50, 18), B(18, 3), C(50, 18);
 
 	for(int i = 0; i < A.total(); i++){
-		A.ptr()[i] = i;
-		C.ptr()[i] = 11. + C.total() - i;
+		A.ptr()[i] = i/100.;
+		C.ptr()[i] = (11. + C.total() - i)/100.;
 	}
 	for(int i = 0; i < B.total(); i++){
-		B.ptr()[i] = i;
+		B.ptr()[i] = i/100.;
 	}
 
 //	A.randn(0, 1, 0);

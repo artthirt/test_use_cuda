@@ -865,7 +865,7 @@ __global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
 			As[_row][_col] = getEl<T>(ASub, _row, _col);
 //		else
 //			As[_row][_col] = 0;
-		if(m * BLOCKSIZE + _col < Bt.cols && blockRow * BLOCKSIZE + _row < Bt.rows)
+		if(m * BLOCKSIZE + _row < Bt.rows && blockCol * BLOCKSIZE + _col < Bt.cols)
 			Bs[_row][_col] = getEl<T>(BSub, _row, _col);
 //		else
 //			Bs[_row][_col] = 0;
@@ -874,7 +874,7 @@ __global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
 
 		for(int e = 0; e < BLOCKSIZE; ++e){
 			if(blockCol * BLOCKSIZE + e < A.cols)
-				sC += As[_row][e] * Bs[e][_col];
+				sC += As[_row][e] * Bs[_col][e];
 		}
 		__syncthreads();
 	}
