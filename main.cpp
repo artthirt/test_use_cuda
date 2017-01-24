@@ -72,25 +72,33 @@ void test_cuda()
 	_void_;											\
 	tc = tick() - tc;								\
 	std::string s = (std::string)result();			\
-	std::cout << caption << " time: " << tc			\
-	<< endl << s.c_str();							\
+	std::cout << caption << " time: " << tc;		\
+/*	std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
 
 #define PRINT_MAT(result, caption)	{				\
 	std::string s = (std::string)result();			\
-	std::cout << caption << endl << s.c_str();		\
+	std::cout << caption;							\
+	/*std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
 
-#define CALC_MAT(_void_, result, caption)	{		\
-	_void_;											\
+#define CALC_MAT(_void_, result, caption, count){	\
+	double tcc = 0;									\
+	for(int i = 0; i < count; ++i){					\
+		double tc = tick();							\
+		_void_;										\
+		tcc += tick() - tc;							\
+	}												\
+	tcc /= count;									\
 	std::string s = (std::string)result();			\
-	std::cout << caption << endl << s.c_str();		\
+	std::cout << caption << " time: " << tcc;		\
+	/*std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
 
-	ct::Matd A(50, 18), B(18, 3), C(50, 18);
+	ct::Matf A(1000, 308), B(308, 143), C(1000, 308);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i/100.;
@@ -104,15 +112,17 @@ void test_cuda()
 //	B.randn(0, 1, 1);
 //	C.randn(0, 1, 2);
 
-	gpumat::GpuMat gA(A.rows, A.cols, gpumat::GPU_DOUBLE, A.ptr()), g_tmp;
-	gpumat::GpuMat gC(C.rows, C.cols, gpumat::GPU_DOUBLE, C.ptr());
-	gpumat::GpuMat gB(B.rows, B.cols, gpumat::GPU_DOUBLE, B.ptr());
+	gpumat::GpuMat gA(A.rows, A.cols, gpumat::GPU_FLOAT, A.ptr()), g_tmp;
+	gpumat::GpuMat gC(C.rows, C.cols, gpumat::GPU_FLOAT, C.ptr());
+	gpumat::GpuMat gB(B.rows, B.cols, gpumat::GPU_FLOAT, B.ptr());
+	gpumat::GpuMat R;
 
 	double gv1(3.), gv2(0.001);
 
 	PRINT_MAT(gA, "A");
 	PRINT_MAT(gB, "B");
 	PRINT_MAT(gC, "C");
+	std::cout << "----\n";
 	TEST_VOID(gpumat::GpuMat, R, gpumat::add(gA, gC, R, 1, 1), "A + C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sub(gA, gC, R), "A - C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::addval(gA, gv1, R), "A + 3");
@@ -120,32 +130,37 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, R, gpumat::subval(gv1, gA, R), "3 - A");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::mulval(gA, gv1, R), "A * 3");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::elemwiseMult(gA, gC, R), "A .* C");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A * B");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul_shared(gA, gB, R), "A * B (shared)");
+	std::cout << "----\n";
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
+	std::cout << "----\n";
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
 
 	g_tmp = gA;
-	CALC_MAT(gpumat::addval(g_tmp, gv1), g_tmp, "Atmp + 3");
+	CALC_MAT(gpumat::addval(g_tmp, gv1), g_tmp, "Atmp + 3", 10);
 	g_tmp = gA;
-	CALC_MAT(gpumat::subval(g_tmp, gv1), g_tmp, "Atmp - 3");
+	CALC_MAT(gpumat::subval(g_tmp, gv1), g_tmp, "Atmp - 3", 10);
 	g_tmp = gA;
-	CALC_MAT(gpumat::subval(gv1, g_tmp), g_tmp, "3 - Atmp");
+	CALC_MAT(gpumat::subval(gv1, g_tmp), g_tmp, "3 - Atmp", 10);
 
 	gpumat::GpuMat gAt, gBt, partZ;
 
 	gpumat::transpose(gA, gAt);
 	gpumat::transpose(gB, gBt);
-
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT1(gAt, gB, R), "At * B");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT1_shared(gAt, gB, R), "At * B (shared)");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT2(gA, gBt, R), "A * Bt");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT2_shared(gA, gBt, R), "A * Bt (shared)");
-
+	std::cout << "----\n";
+	R.resize(gA.rows, gB.cols, gA.type);
+	CALC_MAT(gpumat::matmul(gA, gB, R), R, "A * B", 100);
+	CALC_MAT(gpumat::matmul_shared(gA, gB, R), R, "A * B (shared)", 100);
+	R.resize(gAt.cols, gB.cols, gA.type);
+	CALC_MAT(gpumat::matmulT1(gAt, gB, R), R, "At * B", 100);
+	CALC_MAT(gpumat::matmulT1_shared(gAt, gB, R), R, "At * B (shared)", 100);
+	R.resize(gA.rows, gBt.rows, gA.type);
+	CALC_MAT(gpumat::matmulT2(gA, gBt, R), R, "A * Bt", 100);
+	CALC_MAT(gpumat::matmulT2_shared(gA, gBt, R), R, "A * Bt (shared)", 100);
+	std::cout << "----\n";
 	PRINT_MAT(gA, "A");
-	CALC_MAT(gpumat::mulval(gA, gv2, gB), gB, "B");
+	CALC_MAT(gpumat::mulval(gA, gv2, gB), gB, "B", 10);
 	TEST_VOID(gpumat::GpuMat, R, gpumat::softmax(gB, 1, R, partZ), "softmax");
 	PRINT_MAT(partZ, "partZ");
 
