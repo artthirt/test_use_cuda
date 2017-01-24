@@ -131,9 +131,10 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, R, gpumat::mulval(gA, gv1, R), "A * 3");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::elemwiseMult(gA, gC, R), "A .* C");
 	std::cout << "----\n";
-	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
-	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
+
+	R.resize(1, gA.cols, gA.type);
+	CALC_MAT(gpumat::sumRows(gA, R), R, "sumrows(A)", 10);
+	CALC_MAT(gpumat::sumRows(gA, R), R, "sumrows(A)", 10);
 	std::cout << "----\n";
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
 

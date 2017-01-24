@@ -878,7 +878,7 @@ void sumRows(const GpuMat &A, GpuMat &C, double val)
 	if(A.empty())
 		return;
 
-	if(A.rows != C.rows || C.cols != 1 || A.type != C.type){
+	if(C.rows != 1 || C.cols != A.cols || A.type != C.type){
 		C.resize(1, A.cols, A.type);
 	}
 
