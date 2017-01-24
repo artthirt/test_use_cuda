@@ -33,7 +33,7 @@ struct Mtx{
 	}
 };
 
-#define BLOCKSIZE	32
+#define BLOCKSIZE	16
 
 /**
  * @brief memset
@@ -940,7 +940,7 @@ __global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
 //			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
 //		}
 		//DC[row * B.cols + col] = sC;
-		setEl<T>(CSub, _row, _col, sC * val);
+		setEl<T>(CSub, _col, _row, sC * val);
 	}
 //	if(col < C.cols){
 //		dZ[col] = 0;

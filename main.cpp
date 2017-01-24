@@ -80,7 +80,7 @@ void test_cuda()
 #define PRINT_MAT(result, caption)	{				\
 	std::string s = (std::string)result();			\
 	std::cout << caption;							\
-	std::cout << endl << s.c_str();					\
+	/*std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
 
@@ -94,11 +94,11 @@ void test_cuda()
 	tcc /= count;									\
 	std::string s = (std::string)result();			\
 	std::cout << caption << " time: " << tcc;		\
-	std::cout << endl << s.c_str();					\
+	/*std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
 
-	ct::Matf A(20, 18), B(18, 14), C(20, 18);
+	ct::Matf A(2000, 180), B(180, 1400), C(2000, 180);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i/100.;
@@ -162,7 +162,10 @@ void test_cuda()
 	CALC_MAT(gpumat::matmulT2_shared(gA, gBt, R), R, "A * Bt (shared)", 100);
 	std::cout << "----\n";
 	PRINT_MAT(gA, "A");
+	gB.resize(gA);
 	CALC_MAT(gpumat::mulval(gA, gv2, gB), gB, "B", 10);
+	R.resize(gB);
+	partZ.resize(gB.rows, 1, gB.type);
 	TEST_VOID(gpumat::GpuMat, R, gpumat::softmax(gB, 1, R, partZ), "softmax");
 	PRINT_MAT(partZ, "partZ");
 
