@@ -901,15 +901,47 @@ __global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
 template< class T >
 __global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
 {
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
-	T sC = 0;
-
-	T* dC = (T*)C.data;
-	T* dZ = (T*)cols.data;
-
+	int _row = threadIdx.y;
 	int _col = threadIdx.x;
 
+	int blockRow = blockIdx.y;
+	int blockCol = blockIdx.x;
+
+	DMtx CSub = getSubMatrix<T>(cols, blockRow, blockCol);
+
+	float sC = 0;
+
+	for(int m = 0; m < C.rows / BLOCKSIZE + 1; ++m){
+		DMtx ASub = getSubMatrix<T>(C, m, blockRow);
+
+		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
+
+		if(m * BLOCKSIZE + _row < C.rows && blockCol * BLOCKSIZE + _col < C.cols)
+			As[_row][_col] = getEl<T>(ASub, _row, _col);
+
+		__syncthreads();
+
+		for(int e = 0; e < BLOCKSIZE; ++e){
+			if(blockCol * BLOCKSIZE + e < C.rows)
+				sC += As[e][_row];
+		}
+		__syncthreads();
+	}
+
+//	T* DA = (T*)A.data;
+//	T* DB = (T*)B.data;
+//	T* DC = (T*)C.data;
+
+	if(row < C.rows && col < C.cols){
+//		for(int i = 0; i < B.rows; i++){
+//			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
+//		}
+		//DC[row * B.cols + col] = sC;
+		setEl<T>(CSub, _row, _col, sC * val);
+	}
 //	if(col < C.cols){
 //		dZ[col] = 0;
 //		for(int i = 0; i < C.rows; i++){
@@ -1625,15 +1657,15 @@ void cuda_sumrows(const GpuMat& A, GpuMat& sums, double val)
 extern "C"
 void cuda_sumrows_shared(const GpuMat& A, GpuMat& sums, double val)
 {
-	int x1 = A.cols / BLOCKSIZE + 1;
+	int x1 = A.rows / BLOCKSIZE + 1;
 //	int x2 = A.rows / BLOCKSIZE + 1;
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-			internal::sum_rows_shared<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (double)val);
+			internal::sum_rows_shared<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, BLOCKSIZE)>>>(A, sums, (double)val);
 		break;
 	case GPU_FLOAT:
-			internal::sum_rows_shared<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (float)val);
+			internal::sum_rows_shared<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, BLOCKSIZE)>>>(A, sums, (float)val);
 		break;
 	}
 }
