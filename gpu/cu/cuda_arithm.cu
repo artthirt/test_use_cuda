@@ -1733,41 +1733,24 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 	switch (A.type) {
 	case GPU_DOUBLE:
 		internal::_exp<double> <<<dimGrid, dimBlock>>>(A, C);
+		if(axis == 0){
+			internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+			internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
+		}else{
+			internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+			internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
+		}
 		break;
 	case GPU_FLOAT:
 		internal::_exp<float> <<<dimGrid, dimBlock>>>(A, C);
+		if(axis == 0){
+			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+			internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
+		}else{
+			internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+			internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
+		}
 		break;
-	}
-
-	switch (axis) {
-		case 0:
-			{
-				switch (A.type) {
-				case GPU_DOUBLE:
-						internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
-						internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				case GPU_FLOAT:
-						internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
-						internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				}
-			}
-			break;
-		case 1:
-			{
-				switch (A.type) {
-				case GPU_DOUBLE:
-						internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
-						internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				case GPU_FLOAT:
-						internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
-						internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				}
-			}
-			break;
 	}
 }
 
