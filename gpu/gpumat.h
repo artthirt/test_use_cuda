@@ -260,6 +260,12 @@ void elemwiseSqr(const GpuMat& A, GpuMat& C);
  */
 void sumRows(const GpuMat& A, GpuMat& C, double val = 1.);
 /**
+ * @brief sumRows
+ * @param A
+ * @param C - out C[i] = val * sum(A[i, j]) (j = [1, cols])
+ */
+void sumRows_shared(const GpuMat& A, GpuMat& C, double val = 1.);
+/**
  * @brief transpose
  * @param A
  * @param C - out C = A'

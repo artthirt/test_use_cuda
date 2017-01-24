@@ -524,6 +524,14 @@ extern "C"
 void cuda_sumrows(const GpuMat& A, GpuMat& C, double val);
 
 /**
+ * @brief cuda_sumrows_shared
+ * @param A
+ * @param C - out C[i] = val * sum(A[i, j])(j = [1..cols])
+ */
+extern "C"
+void cuda_sumrows_shared(const GpuMat& A, GpuMat& C, double val);
+
+/**
  * @brief cuda_transpose
  * @param A
  * @param C = A'
@@ -883,6 +891,18 @@ void sumRows(const GpuMat &A, GpuMat &C, double val)
 	}
 
 	cuda_sumrows(A, C, val);
+}
+
+void sumRows_shared(const GpuMat &A, GpuMat &C, double val)
+{
+	if(A.empty())
+		return;
+
+	if(C.rows != 1 || C.cols != A.cols || A.type != C.type){
+		C.resize(1, A.cols, A.type);
+	}
+
+	cuda_sumrows_shared(A, C, val);
 }
 
 void sub_adamGrad(GpuMat &A, const GpuMat &mA, const GpuMat &vA, double alpha, double sb1, double sb2)

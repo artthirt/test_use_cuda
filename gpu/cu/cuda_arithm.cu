@@ -892,6 +892,33 @@ __global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
 	}
 }
 
+/**
+ * @brief sum_col
+ * @param A
+ * @param C = exp(A)
+ * @param rows = sum(C)
+ */
+template< class T >
+__global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
+{
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T sC = 0;
+
+	T* dC = (T*)C.data;
+	T* dZ = (T*)cols.data;
+
+	int _col = threadIdx.x;
+
+//	if(col < C.cols){
+//		dZ[col] = 0;
+//		for(int i = 0; i < C.rows; i++){
+//			dZ[col] += dC[i * C.cols + col];
+//		}
+//		dZ[col] *= val;
+//	}
+}
+
 }
 
 //////// end namespace /////////////////
@@ -1586,6 +1613,27 @@ void cuda_sumrows(const GpuMat& A, GpuMat& sums, double val)
 		break;
 	case GPU_FLOAT:
 			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (float)val);
+		break;
+	}
+}
+
+/**
+ * @brief cuda_sumrows_shared
+ * @param A
+ * @param C - out C[i] = sum(A[i, j])(j = [1..cols])
+ */
+extern "C"
+void cuda_sumrows_shared(const GpuMat& A, GpuMat& sums, double val)
+{
+	int x1 = A.cols / BLOCKSIZE + 1;
+//	int x2 = A.rows / BLOCKSIZE + 1;
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+			internal::sum_rows_shared<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (double)val);
+		break;
+	case GPU_FLOAT:
+			internal::sum_rows_shared<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (float)val);
 		break;
 	}
 }

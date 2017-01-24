@@ -80,7 +80,7 @@ void test_cuda()
 #define PRINT_MAT(result, caption)	{				\
 	std::string s = (std::string)result();			\
 	std::cout << caption;							\
-	/*std::cout << endl << s.c_str();*/				\
+	std::cout << endl << s.c_str();					\
 	std::cout << endl;								\
 }
 
@@ -94,11 +94,11 @@ void test_cuda()
 	tcc /= count;									\
 	std::string s = (std::string)result();			\
 	std::cout << caption << " time: " << tcc;		\
-	/*std::cout << endl << s.c_str();*/				\
+	std::cout << endl << s.c_str();					\
 	std::cout << endl;								\
 }
 
-	ct::Matf A(1000, 308), B(308, 143), C(1000, 308);
+	ct::Matf A(20, 18), B(18, 14), C(20, 18);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i/100.;
@@ -135,6 +135,7 @@ void test_cuda()
 	R.resize(1, gA.cols, gA.type);
 	CALC_MAT(gpumat::sumRows(gA, R), R, "sumrows(A)", 10);
 	CALC_MAT(gpumat::sumRows(gA, R), R, "sumrows(A)", 10);
+	CALC_MAT(gpumat::sumRows_shared(gA, R), R, "sumrows(A) (shared)", 10);
 	std::cout << "----\n";
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
 
