@@ -34,6 +34,19 @@ void print_mat(const mats::Mat<T>& mc)
 	cout << "]\n";
 }
 
+#ifdef _MSC_VER
+#else
+
+double tick()
+{
+	struct timespec res;
+	clock_gettime(CLOCK_MONOTONIC, &res);
+	double dres = res.tv_nsec + res.tv_sec * 1e9;
+	return (double)dres / 1000.;
+}
+
+#endif
+
 template<class T>
 void print_mat(const mats::Mat<T>& mc, const std::string& caption, const std::string& fn)
 {
@@ -55,9 +68,12 @@ void test_cuda()
 {
 #define TEST_VOID(type, result, _void_, caption) {	\
 	type result;									\
+	double tc = tick();								\
 	_void_;											\
+	tc = tick() - tc;								\
 	std::string s = (std::string)result();			\
-	std::cout << caption << endl << s.c_str();		\
+	std::cout << caption << " time: " << tc			\
+	<< endl << s.c_str();							\
 	std::cout << endl;								\
 }
 
@@ -74,7 +90,7 @@ void test_cuda()
 	std::cout << endl;								\
 }
 
-	ct::Matd A(30, 8), B(8, 3), C(30, 8);
+	ct::Matd A(50, 18), B(18, 3), C(50, 18);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i;
@@ -106,6 +122,7 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, R, gpumat::elemwiseMult(gA, gC, R), "A .* C");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A * B");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul_shared(gA, gB, R), "A * B (shared)");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::sumRows(gA, R), "sumrows(A)");
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
@@ -123,7 +140,9 @@ void test_cuda()
 	gpumat::transpose(gB, gBt);
 
 	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT1(gAt, gB, R), "At * B");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT1_shared(gAt, gB, R), "At * B (shared)");
 	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT2(gA, gBt, R), "A * Bt");
+	TEST_VOID(gpumat::GpuMat, R, gpumat::matmulT2_shared(gA, gBt, R), "A * Bt (shared)");
 
 	PRINT_MAT(gA, "A");
 	CALC_MAT(gpumat::mulval(gA, gv2, gB), gB, "B");

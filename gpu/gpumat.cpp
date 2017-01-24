@@ -350,6 +350,15 @@ extern "C"
 void cuda_matmul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
+ * @brief matmul_shared
+ * @param A
+ * @param B
+ * @param C - out C = A * B
+ */
+extern "C"
+void cuda_matmul_shared(const GpuMat& A, const GpuMat& B, GpuMat& C);
+
+/**
  * @brief matmulT1
  * @param At - used as transposed matrix
  * @param B
@@ -359,6 +368,16 @@ extern "C"
 void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C);
 
 /**
+ * @brief matmulT1_shared
+ * @param At - used as transposed matrix
+ * @param B
+ * @param C - out C = A' * B
+ */
+extern "C"
+void cuda_matmulT1_shared(const GpuMat& At, const GpuMat& B, GpuMat& C);
+
+
+/**
  * @brief matmulT2
  * @param A
  * @param Bt - used as transposed matrix
@@ -366,6 +385,15 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C);
  */
 extern "C"
 void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
+
+/**
+ * @brief matmulT2_shared
+ * @param A
+ * @param Bt - used as transposed matrix
+ * @param C - out C = A * B'
+ */
+extern "C"
+void cuda_matmulT2_shared(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
 
 /**
  * @brief mulval
@@ -619,6 +647,17 @@ void matmul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	cuda_matmul(A, B, C);
 }
 
+void matmul_shared(const GpuMat &A, const GpuMat &B, GpuMat &C)
+{
+	if(A.cols != B.rows || A.type != B.type)
+		return;
+
+	if(C.rows != A.rows || C.cols != B.cols || C.type != A.type)
+		C.resize(A.rows, B.cols, A.type);
+
+	cuda_matmul_shared(A, B, C);
+}
+
 void matmulT1(const GpuMat &At, const GpuMat &B, GpuMat &C)
 {
 	if(At.rows != B.rows || At.type != B.type)
@@ -630,6 +669,18 @@ void matmulT1(const GpuMat &At, const GpuMat &B, GpuMat &C)
 	cuda_matmulT1(At, B, C);
 }
 
+void matmulT1_shared(const GpuMat &At, const GpuMat &B, GpuMat &C)
+{
+	if(At.rows != B.rows || At.type != B.type)
+		return;
+
+	if(C.rows != At.cols || C.cols != B.cols || C.type != At.type)
+		C.resize(At.cols, B.cols, At.type);
+
+	cuda_matmulT1_shared(At, B, C);
+}
+
+
 void matmulT2(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
 {
 	if(A.cols != Bt.cols || A.type != Bt.type)
@@ -639,6 +690,17 @@ void matmulT2(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
 		C.resize(A.rows, Bt.rows, A.type);
 
 	cuda_matmulT2(A, Bt, C);
+}
+
+void matmulT2_shared(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
+{
+	if(A.cols != Bt.cols || A.type != Bt.type)
+		return;
+
+	if(C.rows != A.rows || C.cols != Bt.rows || C.type != A.type)
+		C.resize(A.rows, Bt.rows, A.type);
+
+	cuda_matmulT2_shared(A, Bt, C);
 }
 
 
