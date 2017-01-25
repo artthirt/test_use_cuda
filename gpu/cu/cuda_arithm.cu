@@ -741,11 +741,11 @@ __global__ void matmul_shared(Mtx A, Mtx B, Mtx C)
 		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
 		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
 
-		if(blockRow * BLOCKSIZE + _row < A.rows && m * BLOCKSIZE + _col < A.cols)
+		if(row < A.rows && m * BLOCKSIZE + _col < A.cols)
 			As[_row][_col] = getEl<T>(ASub, _row, _col);
 //		else
 //			As[_row][_col] = 0;
-		if(m * BLOCKSIZE + _row < B.rows && blockCol * BLOCKSIZE + _col < B.cols)
+		if(m * BLOCKSIZE + _row < B.rows && col < B.cols)
 			Bs[_row][_col] = getEl<T>(BSub, _row, _col);
 //		else
 //			Bs[_row][_col] = 0;
@@ -753,21 +753,13 @@ __global__ void matmul_shared(Mtx A, Mtx B, Mtx C)
 		__syncthreads();
 
 		for(int e = 0; e < BLOCKSIZE; ++e){
-			if(blockCol * BLOCKSIZE + e < A.cols)
+			if(m * BLOCKSIZE + e < A.cols)
 				sC += As[_row][e] * Bs[e][_col];
 		}
 		__syncthreads();
 	}
 
-//	T* DA = (T*)A.data;
-//	T* DB = (T*)B.data;
-//	T* DC = (T*)C.data;
-
-	if(row < A.rows && col < B.cols){
-//		for(int i = 0; i < B.rows; i++){
-//			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
-//		}
-		//DC[row * B.cols + col] = sC;
+	if(row < C.rows && col < C.cols){
 		setEl<T>(CSub, _row, _col, sC);
 	}
 }
@@ -801,7 +793,7 @@ __global__ void matmulT1_shared(Mtx At, Mtx B, Mtx C)
 		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
 		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
 
-		if(m * BLOCKSIZE + _row < At.rows && blockCol * BLOCKSIZE + _col < At.cols)
+		if(m * BLOCKSIZE + _row < At.rows && blockRow * BLOCKSIZE + _col < At.cols)
 			As[_row][_col] = getEl<T>(ASub, _row, _col);
 //		else
 //			As[_row][_col] = 0;
@@ -813,27 +805,19 @@ __global__ void matmulT1_shared(Mtx At, Mtx B, Mtx C)
 		__syncthreads();
 
 		for(int e = 0; e < BLOCKSIZE; ++e){
-			if(blockCol * BLOCKSIZE + e < At.rows)
+			if(m * BLOCKSIZE + e < At.rows)
 				sC += As[e][_row] * Bs[e][_col];
 		}
 		__syncthreads();
 	}
 
-//	T* DA = (T*)A.data;
-//	T* DB = (T*)B.data;
-//	T* DC = (T*)C.data;
-
 	if(row < C.rows && col < C.cols){
-//		for(int i = 0; i < B.rows; i++){
-//			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
-//		}
-		//DC[row * B.cols + col] = sC;
 		setEl<T>(CSub, _row, _col, sC);
 	}
 }
 
 /**
- * @brief matmul_shared
+ * @brief matmulT2_shared
  * @param A
  * @param B
  * @param C - out C = A * B
@@ -861,11 +845,11 @@ __global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
 		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
 		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
 
-		if(blockRow * BLOCKSIZE + _row < A.rows && m * BLOCKSIZE + _col < A.cols)
+		if(row < A.rows && m * BLOCKSIZE + _col < A.cols)
 			As[_row][_col] = getEl<T>(ASub, _row, _col);
 //		else
 //			As[_row][_col] = 0;
-		if(m * BLOCKSIZE + _row < Bt.rows && blockCol * BLOCKSIZE + _col < Bt.cols)
+		if(blockCol * BLOCKSIZE + _row < Bt.rows && m * BLOCKSIZE + _col < Bt.cols)
 			Bs[_row][_col] = getEl<T>(BSub, _row, _col);
 //		else
 //			Bs[_row][_col] = 0;
@@ -873,27 +857,19 @@ __global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
 		__syncthreads();
 
 		for(int e = 0; e < BLOCKSIZE; ++e){
-			if(blockCol * BLOCKSIZE + e < A.cols)
+			if(m * BLOCKSIZE + e < A.cols)
 				sC += As[_row][e] * Bs[_col][e];
 		}
 		__syncthreads();
 	}
 
-//	T* DA = (T*)A.data;
-//	T* DB = (T*)B.data;
-//	T* DC = (T*)C.data;
-
-	if(row < A.rows && col < Bt.rows){
-//		for(int i = 0; i < B.rows; i++){
-//			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
-//		}
-		//DC[row * B.cols + col] = sC;
+	if(row < C.rows && col < C.cols){
 		setEl<T>(CSub, _row, _col, sC);
 	}
 }
 
 /**
- * @brief sum_col
+ * @brief sum_rows_shared
  * @param A
  * @param C = exp(A)
  * @param rows = sum(C)
@@ -916,39 +892,35 @@ __global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
 
 	for(int m = 0; m < C.rows / BLOCKSIZE + 1; ++m){
 		DMtx ASub = getSubMatrix<T>(C, m, blockRow);
+//		DMtx BSub = getSubMatrix<T>(B, m, blockCol);
 
 		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
+		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
 
-		if(m * BLOCKSIZE + _row < C.rows && blockCol * BLOCKSIZE + _col < C.cols)
+		if(m * BLOCKSIZE + _row < C.rows && blockRow * BLOCKSIZE + _col < C.cols)
 			As[_row][_col] = getEl<T>(ASub, _row, _col);
+//		else
+//			As[_row][_col] = 0;
 
 		__syncthreads();
 
 		for(int e = 0; e < BLOCKSIZE; ++e){
-			if(blockCol * BLOCKSIZE + e < C.rows)
+			if(m * BLOCKSIZE + e < C.rows)
 				sC += As[e][_row];
 		}
 		__syncthreads();
 	}
 
-//	T* DA = (T*)A.data;
-//	T* DB = (T*)B.data;
-//	T* DC = (T*)C.data;
-
-	if(row < C.rows && col < C.cols){
+//	if(row < C.rows && col < C.cols){
 //		for(int i = 0; i < B.rows; i++){
 //			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
 //		}
 		//DC[row * B.cols + col] = sC;
-		setEl<T>(CSub, _col, _row, sC * val);
-	}
-//	if(col < C.cols){
-//		dZ[col] = 0;
-//		for(int i = 0; i < C.rows; i++){
-//			dZ[col] += dC[i * C.cols + col];
-//		}
-//		dZ[col] *= val;
+//		setEl<T>(CSub, _row, _col, sC);
 //	}
+	if(row < C.rows && col < C.cols){
+		setEl<T>(CSub, _col, _row, sC);
+	}
 }
 
 }

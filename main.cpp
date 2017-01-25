@@ -3,6 +3,7 @@
 #include <fstream>
 #include <ctime>
 #include <chrono>
+#include <sstream>
 
 #include <cuda_runtime.h>
 #include <vector_types.h>
@@ -85,6 +86,14 @@ void print_mat(const mats::Mat<T>& mc, const std::string& caption, const std::st
 	fs.close();
 }
 
+template< typename T >
+std::string prints(const std::string& str, T val)
+{
+	std::stringstream ss;
+	 ss << str << val;
+	 return ss.str();
+}
+
 void test_cuda()
 {
 #define TEST_VOID(type, result, _void_, caption) {	\
@@ -93,7 +102,7 @@ void test_cuda()
 	_void_;											\
 	tc = tick() - tc;								\
 	std::string s = (std::string)result();			\
-	std::cout << caption << " time(ms): " << tc;		\
+	std::cout << caption << " time(ms): " << tc;	\
 /*	std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
@@ -101,7 +110,7 @@ void test_cuda()
 #define PRINT_MAT(result, caption)	{				\
 	std::string s = (std::string)result();			\
 	std::cout << caption;							\
-	/*std::cout << endl << s.c_str();*/				\
+	std::cout << endl << s.c_str();					\
 	std::cout << endl;								\
 }
 
@@ -110,15 +119,15 @@ void test_cuda()
 	for(int i = 0; i < count; ++i){					\
 		_void_;										\
 	}												\
-	tcc = tick() - tcc;							\
+	tcc = tick() - tcc;								\
 	tcc /= count;									\
 	std::string s = (std::string)result();			\
-	std::cout << caption << " time(ms): " << tcc;		\
-	/*std::cout << endl << s.c_str();*/				\
+	std::cout << caption << " time(ms): " << tcc;	\
+	std::cout << endl << s.c_str();					\
 	std::cout << endl;								\
 }
 
-	ct::Matf A(200, 180), B(180, 140), C(200, 180);
+	ct::Matf A(35, 18), B(18, 35), C(35, 18);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i/100.;
@@ -160,11 +169,11 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, T, gpumat::transpose(gA, T), "A'");
 
 	g_tmp = gA;
-	CALC_MAT(gpumat::addval(g_tmp, gv1), g_tmp, "Atmp + 3", 10);
+	CALC_MAT(gpumat::addval(g_tmp, gv1), g_tmp, prints("(Atmp + 3) * ", 10), 10);
 	g_tmp = gA;
-	CALC_MAT(gpumat::subval(g_tmp, gv1), g_tmp, "Atmp - 3", 10);
+	CALC_MAT(gpumat::subval(g_tmp, gv1), g_tmp, prints("(Atmp - 3) * ", 10), 10);
 	g_tmp = gA;
-	CALC_MAT(gpumat::subval(gv1, g_tmp), g_tmp, "3 - Atmp", 10);
+	CALC_MAT(gpumat::subval(gv1, g_tmp), g_tmp, prints("(3 - Atmp) * ", 10), 10);
 
 	gpumat::GpuMat gAt, gBt, partZ;
 
@@ -186,7 +195,7 @@ void test_cuda()
 	CALC_MAT(gpumat::mulval(gA, gv2, gB), gB, "B", 10);
 	R.resize(gB);
 	partZ.resize(gB.rows, 1, gB.type);
-	TEST_VOID(gpumat::GpuMat, R, gpumat::softmax(gB, 1, R, partZ), "softmax");
+	CALC_MAT(gpumat::softmax(gB, 1, R, partZ), R, "softmax", 10);
 	PRINT_MAT(partZ, "partZ");
 
 //	gA.ones();
