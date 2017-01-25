@@ -35,6 +35,27 @@ void print_mat(const mats::Mat<T>& mc)
 }
 
 #ifdef _MSC_VER
+
+#include <Windows.h>
+
+LARGE_INTEGER freq_pc()
+{
+	static LARGE_INTEGER pc = {0};
+	if(pc.QuadPart)
+		return pc;
+	QueryPerformanceFrequency(&pc);
+	return pc;
+}
+
+double tick()
+{
+	LARGE_INTEGER pc, freq;
+	QueryPerformanceCounter(&pc);
+	freq = freq_pc();
+	double res = (double)pc.QuadPart / freq.QuadPart;
+	return res * 1e6;
+}
+
 #else
 
 double tick()
@@ -85,12 +106,11 @@ void test_cuda()
 }
 
 #define CALC_MAT(_void_, result, caption, count){	\
-	double tcc = 0;									\
+	double tcc = tick();							\
 	for(int i = 0; i < count; ++i){					\
-		double tc = tick();							\
 		_void_;										\
-		tcc += tick() - tc;							\
 	}												\
+	tcc = tick() - tcc;							\
 	tcc /= count;									\
 	std::string s = (std::string)result();			\
 	std::cout << caption << " time: " << tcc;		\
