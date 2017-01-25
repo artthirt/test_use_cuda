@@ -93,7 +93,7 @@ void test_cuda()
 	_void_;											\
 	tc = tick() - tc;								\
 	std::string s = (std::string)result();			\
-	std::cout << caption << " time: " << tc;		\
+	std::cout << caption << " time(ms): " << tc;		\
 /*	std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
@@ -113,12 +113,12 @@ void test_cuda()
 	tcc = tick() - tcc;							\
 	tcc /= count;									\
 	std::string s = (std::string)result();			\
-	std::cout << caption << " time: " << tcc;		\
+	std::cout << caption << " time(ms): " << tcc;		\
 	/*std::cout << endl << s.c_str();*/				\
 	std::cout << endl;								\
 }
 
-	ct::Matf A(2000, 180), B(180, 1400), C(2000, 180);
+	ct::Matf A(200, 180), B(180, 140), C(200, 180);
 
 	for(int i = 0; i < A.total(); i++){
 		A.ptr()[i] = i/100.;
@@ -189,10 +189,10 @@ void test_cuda()
 	TEST_VOID(gpumat::GpuMat, R, gpumat::softmax(gB, 1, R, partZ), "softmax");
 	PRINT_MAT(partZ, "partZ");
 
-	gA.ones();
-	gB.ones();
+//	gA.ones();
+//	gB.ones();
 
-	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A(1) * B(1)");
+//	TEST_VOID(gpumat::GpuMat, R, gpumat::matmul(gA, gB, R), "A(1) * B(1)");
 }
 
 int main(int argc, char *argv[])
