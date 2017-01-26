@@ -1,23 +1,31 @@
 TEMPLATE = app
 CONFIG += console c++11
 CONFIG -= app_bundle
-CONFIG -= qt
+CONFIG += qt
+
+QT += core
 
 SOURCES += main.cpp \
     gpu/gpumat.cpp \
     arithm/shared_memory.cpp \
-    arithm/custom_types.cpp
+    arithm/custom_types.cpp \
+    gpu/helper_gpu.cpp
 
 HEADERS +=							\
     $$PWD/mats.h					\
     $$PWD/gpu/gpumat.h				\
     $$PWD/arithm/shared_memory.h	\
-    $$PWD/arithm/custom_types.h
+    $$PWD/arithm/custom_types.h \
+    gpu/helper_gpu.h
 
 
 INCLUDEPATH += $$PWD/		\
                $$PWD/arithm	\
                $$PWD/gpu/
+
+unix{
+    LIBS += -lgomp
+}
 
 #CUDA_DIR = "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/"
 #SYSTEM_TYPE = x64

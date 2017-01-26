@@ -35,6 +35,19 @@ void print_mat(const mats::Mat<T>& mc)
 	cout << "]\n";
 }
 
+template<class T>
+void print_mat(const ct::Mat_<T>& mc)
+{
+	cout << "[ ";
+	for(int i = 0; i < mc.rows; i++){
+		for(int j = 0; j < mc.cols; j++){
+			cout << mc.ptr()[i * mc.cols + j] << "\t";
+		}
+		cout << ";\n  ";
+	}
+	cout << "]\n";
+}
+
 #ifdef _MSC_VER
 
 #include <Windows.h>
@@ -94,8 +107,8 @@ std::string prints(const std::string& str, T val)
 	 return ss.str();
 }
 
-void test_cuda()
-{
+///////////////////////////////////////////////
+
 #define TEST_VOID(type, result, _void_, caption) {	\
 	type result;									\
 	double tc = tick();								\
@@ -127,6 +140,64 @@ void test_cuda()
 	std::cout << endl;								\
 }
 
+///////////////////////////////////////////////
+
+#include <QString>
+#include <QFile>
+#include <QByteArray>
+#include <QRegExp>
+
+#include <helper_gpu.h>
+
+void load_mat(const QString& fn, ct::Matf& mat)
+{
+	QFile f(fn);
+	if(!f.open(QIODevice::ReadOnly))
+		return;
+
+	std::vector<float> data;
+
+	int rows = 0, cols = 0;
+	QByteArray ba;
+
+	while(!f.atEnd()){
+		ba = f.readLine();
+		QString s = ba, s1;
+		s1 = s.remove(QRegExp("[\[\;]+", Qt::CaseInsensitive, QRegExp::RegExp));
+		s1 = s.trimmed();
+		QStringList sl = s1.split(' ');
+		if(!cols)
+			cols = sl.size();
+		for(int i = 0; i < sl.size(); i++){
+			data.push_back(sl[i].toFloat());
+		}
+		rows++;
+	}
+	mat = ct::Matf(rows, cols, &data[0]);
+}
+
+void test_mat()
+{
+	ct::Matf matf;
+	gpumat::GpuMat gmat, sm, pz;
+	load_mat("data/mat_1500_10.txt", matf);
+
+	if(matf.empty())
+		return;
+
+	print_mat(matf);
+
+	gpumat::convert_to_gpu(matf, gmat);
+
+	gpumat::softmax(gmat, 1, sm, pz);
+
+	PRINT_MAT(pz, "pz");
+	PRINT_MAT(sm, "SOFTMAX");
+
+}
+
+void test_cuda()
+{
 	ct::Matf A(35, 18), B(18, 35), C(35, 18);
 
 	for(int i = 0; i < A.total(); i++){
@@ -208,49 +279,7 @@ int main(int argc, char *argv[])
 {
 	using namespace mats;
 
-#if 0
-	// run your cuda application
-	cudaError_t cuerr = cuda_main();
-	// check for errors is always a good practice!
-	if (cuerr != cudaSuccess) cout << "CUDA Error: " << cudaGetErrorString( cuerr ) << endl;
-
-	double a[] = {
-		1, 2, 3, 4,
-		5, 6, 7, 8,
-		2, 5, 7, 1,
-		5, 8, 2, 9,
-		4, 7, 6, 1
-	};
-	double b[] = {
-		5, 2, 7, 3, 1, 6,
-		7, 2, 3, 5, 1, 7,
-		3, 4, 7, 2, 9, 1,
-		4, 2, 8, 5, 6, 9
-	};
-
-//	Mat ma(5, 4, a), mb(4, 6, b), mc(5, 6);
-	Mat<float> ma(32, 45), mb(45, 11), mc(32, 11);
-
-	for(int i = 0; i < ma.rows; i++){
-		for(int j = 0; j < ma.cols; j++){
-			ma.at(i, j) = (float)i / ma.rows + (float)j / ma.cols;
-		}
-	}
-
-	for(int i = 0; i < mb.rows; i++){
-		for(int j = 0; j < mb.cols; j++){
-			mb.at(i, j) = (float)(mb.rows - i) / mb.rows + (float)(mb.cols / 2. - j) / mb.cols;
-		}
-	}
-
-	cudaError_t err = cudaSuccess;
-
-	err = cuda_mult(&ma, &mb, &mc);
-
-	print_mat(ma, "A", "mat.txt");
-	print_mat(mb, "B", "mat.txt");
-	print_mat(mc, "C", "mat.txt");
-#endif
+	test_mat();
 
 	test_cuda();
 
